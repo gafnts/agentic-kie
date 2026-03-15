@@ -1,6 +1,6 @@
 [project]
 name = "agentic-kie"
-version = "0.1.1"
+dynamic = ["version"]
 description = "Agentic and single-pass Key Information Extraction (KIE) from documents using LLMs"
 readme = "README.md"
 authors = [
@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "langchain>=1.2.10",
     "pydantic>=2.12.5",
+    "pymupdf>=1.27.2",
 ]
 
 [dependency-groups]
@@ -22,16 +23,27 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
 ]
+eda = [
+    "altair>=6.0.0",
+    "nda",
+    "pandas>=3.0.1",
+]
 
 [project.scripts]
 kie = "agentic_kie.main:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.uv]
 link-mode = "copy"
+
+[tool.uv.sources]
+nda = { git = "https://github.com/gafnts/kleister-nda-preparation" }
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentic_kie"]
