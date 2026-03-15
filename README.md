@@ -1,82 +1,78 @@
-# LLM-Powered Entity Extraction from Documents
+# Agentic KIE: LLM-Based Key Information Extraction from Documents
 
-Extracting entities from legal documents with LLMs
+[![CI](https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml/badge.svg)](https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/github/gafnts/agentic-kie/graph/badge.svg)](https://codecov.io/github/gafnts/agentic-kie)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+A Python package for agentic and single-pass Key Information Extraction (KIE) from documents using large language models.
+
+The package exposes two extraction strategies: a **single-pass** approach that issues one structured prompt per document and parses the response directly against a Pydantic schema, and an **agentic** approach that orchestrates a [LangChain](https://python.langchain.com/)-powered agent loop capable of iterative reasoning, tool use, and multi-step refinement over the document content.
+
+## Contents
+
+- [Installation](#installation)
+- [Development](#development)
+  - [Linting and formatting](#linting-and-formatting)
+  - [Testing](#testing)
+- [CI pipeline](#ci-pipeline)
+
+---
 
 ## Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/gafnts/llm-entity-extractor.git
-cd llm-entity-extractor
+The package requires Python 3.13 or later. Dependencies are managed with [uv](https://docs.astral.sh/uv/).
 
-# Install dependencies
-uv sync
-```
+### As a dependency
 
-## Development Setup
+To use this package in your own project without cloning the repository, add it directly from GitHub:
 
 ```bash
-# Install with development dependencies
-uv sync --dev
-
-# Install pre-commit hooks
-uv run pre-commit install
+uv add git+https://github.com/gafnts/agentic-kie
 ```
 
-## Usage
+### For development
+
+Clone the repository and install the package with all dependencies (including dev tools):
 
 ```bash
-# Run the tool
-uv run llm-entity-extractor
+git clone https://github.com/gafnts/agentic-kie.git
+cd agentic-kie
+make install
 ```
+
+Use `make install` to sync dependencies and set up pre-commit hooks (both `pre-commit` and `pre-push`).
+
+To install without development dependencies:
+
+```bash
+uv sync --no-dev
+```
+
+---
 
 ## Development
 
-### Linting and Formatting
+### Linting and formatting
 
 ```bash
-# Run all pre-commit checks
+# Run the linting, formatting and type checking suite
 uv run pre-commit run --all-files
-
-# Or run individual tools:
-
-# Check linting
-uv run ruff check .
-
-# Auto-fix linting issues
-uv run ruff check --fix .
-
-# Check formatting
-uv run ruff format --check .
-
-# Apply formatting
-uv run ruff format .
 ```
 
-### Type Checking
+### Testing
 
 ```bash
-# Run mypy
-uv run mypy src/
+# Run the test suite with coverage
+uv run pytest --cov --cov-branch --cov-report=term-missing
 ```
 
-### Adding Dependencies
+Coverage is enforced at 95% and is reported to [Codecov](https://codecov.io/github/gafnts/agentic-kie) on every CI run.
 
-```bash
-# Add a runtime dependency
-uv add package-name
+---
 
-# Add a development dependency
-uv add --dev package-name
-```
+## CI pipeline
 
-## CI
+GitHub Actions runs two sequential jobs on every push and pull request to `main`:
 
-This project uses GitHub Actions for continuous integration. On every PR to main, the workflow:
-- Runs ruff linting and formatting checks
-- Runs mypy type checking
-- Executes all pre-commit hooks
-
-## License
-
-See [LICENSE](LICENSE) for details.
+1. **`lint-and-type-check`**: runs `ruff check`, `ruff format --check`, and `mypy`.
+2. **`test`**: runs `pytest` with branch coverage and uploads the `coverage.xml` report to Codecov.

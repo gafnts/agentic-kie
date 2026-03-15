@@ -1,6 +1,6 @@
 [project]
 name = "agentic-kie"
-version = "0.1.0"
+version = "0.1.1"
 description = "Agentic and single-pass Key Information Extraction (KIE) from documents using LLMs"
 readme = "README.md"
 authors = [
@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "langchain>=1.2.10",
+    "pydantic>=2.12.5",
 ]
 
 [dependency-groups]
@@ -23,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-nda = "nda.main:main"
+kie = "agentic_kie.main:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -33,7 +34,7 @@ build-backend = "hatchling.build"
 link-mode = "copy"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/nda"]
+packages = ["src/agentic_kie"]
 
 [tool.ruff]
 src = ["src"]
@@ -64,7 +65,7 @@ pythonpath = ["src"]
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/nda/main.py"]
+omit = ["src/agentic_kie/main.py"]
 branch = true
 
 [tool.coverage.report]

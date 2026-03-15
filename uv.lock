@@ -4,10 +4,11 @@ requires-python = ">=3.13"
 
 [[package]]
 name = "agentic-kie"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "langchain" },
+    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -22,7 +23,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "langchain", specifier = ">=1.2.10" }]
+requires-dist = [
+    { name = "langchain", specifier = ">=1.2.10" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+]
 
 [package.metadata.requires-dev]
 dev = [
