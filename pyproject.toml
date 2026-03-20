@@ -19,7 +19,6 @@ dev = [
     "pre-commit>=4.5.1",
     "ruff>=0.15.4",
     "mypy>=1.19.1",
-    "pandas-stubs>=3.0.0.260204",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
 ]
@@ -27,6 +26,7 @@ eda = [
     "altair>=6.0.0",
     "nda",
     "pandas>=3.0.1",
+    "pandas-stubs>=3.0.0.260204",
     "tiktoken>=0.12.0",
 ]
 
