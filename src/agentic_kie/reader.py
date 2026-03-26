@@ -1,51 +1,53 @@
 from __future__ import annotations
 
 import base64
-from pathlib import Path
-from typing import Any
 
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_core.documents import Document
-from pymupdf import pymupdf
+import pymupdf
 
 
-class PDFReader:
-    """
-    `PDFReader` is a high-level orchestrator that gives both extraction modes
-    (single-pass and agentic) a unified interface to read a PDF.
+class PDFDocument:
+    """Parsed PDF representation exposing text and vision modalities."""
 
-    Responsabilities:
-
-        1. Load and hold content at both document and page granularity
-        2. Detect empty or broken documents
-        3. Fall back to Textract OCR
-        4. Provide and format images
-        5. Expose a reading interface for the agent tools
-        6. Serve both extraction modes transparently
-    """
-
-    def __init__(self, path: Path | str, *, dpi: int = 150) -> None:
-        self._path = Path(path)
+    def __init__(
+        self,
+        pdf_text: list[str],
+        pdf_bytes: bytes,
+        *,
+        dpi: int = 150,
+        ocr: bool = False,
+    ) -> None:
+        self._pdf_text = pdf_text
+        self._pdf_bytes = pdf_bytes
         self._dpi = dpi
-        self._pages: list[Document] = PyMuPDFLoader(path, mode="page").load()
+        self._ocr = ocr
 
-    def get_full_text(self) -> str:
-        return "\n\n".join([page.page_content for page in self._pages])
+    @property
+    def page_count(self) -> int:
+        return len(self._pdf_text)
 
-    def get_all_images(self) -> list[str]:
-        document = pymupdf.open(self._path)  # type: ignore[no-untyped-call]
-        return [self._page_to_png(page, self._dpi) for page in document]  # type: ignore[attr-defined]
+    @property
+    def is_ocr(self) -> bool:
+        return self._ocr
+
+    @property
+    def full_text(self) -> str:
+        return "\n\n".join(self._pdf_text)
+
+    @property
+    def all_images(self) -> list[str]:
+        return self.load_images(0, self.page_count)
+
+    def read_text(self, start: int, end: int | None = None) -> str:
+        end = end or start + 1
+        return "\n\n".join(self._pdf_text[start:end])
+
+    def load_images(self, start: int, end: int | None = None) -> list[str]:
+        doc = pymupdf.open(stream=self._pdf_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
+        end = end or start + 1
+        return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
 
     @staticmethod
     def _page_to_png(page: pymupdf.Page, dpi: int) -> str:
         matrix = pymupdf.Matrix(dpi / 72, dpi / 72)  # type: ignore[no-untyped-call]
-        pixel_grid = page.get_pixmap(matrix=matrix)
-        return base64.b64encode(pixel_grid.tobytes("png")).decode()  # type: ignore[no-untyped-call]
-
-    @property
-    def page_count(self) -> int:
-        return len(self._pages)
-
-    @property
-    def metadata(self) -> dict[str, Any]:
-        return self._pages[0].metadata if self._pages else {}
+        pixmap = page.get_pixmap(matrix=matrix)
+        return base64.b64encode(pixmap.tobytes("png")).decode()  # type: ignore[no-untyped-call]

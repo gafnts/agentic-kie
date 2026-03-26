@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from agentic_kie.reader import PDFReader
-
 file_path = (
     Path().cwd()
     / "notebooks"
@@ -13,8 +11,7 @@ file_path = (
 
 
 def main() -> None:
-    reader = PDFReader(file_path)
-    print(reader.get_all_images())
+    pass
 
 
 if __name__ == "__main__":

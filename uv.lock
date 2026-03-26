@@ -25,6 +25,7 @@ dependencies = [
 dev = [
     { name = "ipykernel" },
     { name = "mypy" },
+    { name = "mypy-boto3-textract" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -51,6 +52,7 @@ requires-dist = [
 dev = [
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "mypy", specifier = ">=1.19.1" },
+    { name = "mypy-boto3-textract", specifier = ">=1.42.3" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
@@ -1237,6 +1239,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/da/5055c63e377c5c2418760411fd6a63ee2b96cf95397259038756c042574f/mypy-1.19.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:481daf36a4c443332e2ae9c137dfee878fcea781a2e3f895d54bd3002a900957", size = 13807476, upload-time = "2025-12-15T05:03:17.977Z" },
     { url = "https://files.pythonhosted.org/packages/cd/09/4ebd873390a063176f06b0dbf1f7783dd87bd120eae7727fa4ae4179b685/mypy-1.19.1-cp314-cp314-win_amd64.whl", hash = "sha256:8bb5c6f6d043655e055be9b542aa5f3bdd30e4f3589163e85f93f3640060509f", size = 10281872, upload-time = "2025-12-15T05:03:05.549Z" },
     { url = "https://files.pythonhosted.org/packages/8d/f4/4ce9a05ce5ded1de3ec1c1d96cf9f9504a04e54ce0ed55cfa38619a32b8d/mypy-1.19.1-py3-none-any.whl", hash = "sha256:f1235f5ea01b7db5468d53ece6aaddf1ad0b88d9e7462b86ef96fe04995d7247", size = 2471239, upload-time = "2025-12-15T05:03:07.248Z" },
+]
+
+[[package]]
+name = "mypy-boto3-textract"
+version = "1.42.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/fd/65279c1b39a358822d6bae6866462d33e562ceb344b46f3178b20f3ef9f8/mypy_boto3_textract-1.42.3.tar.gz", hash = "sha256:8f8bc59c58d1e7f91fe8a789b425c9170a9f114390dd1cfefbe389acb777311d", size = 21554, upload-time = "2025-12-04T21:14:20.142Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/d4/ccf9787edb2e547a28e336ff97d93da67e1a25b48d20a81dffda76dab1b3/mypy_boto3_textract-1.42.3-py3-none-any.whl", hash = "sha256:abdf42117f4a35f91a53b3abf0b31f3e13fa87b27b8b6c2eba83c14b16b9e16a", size = 29943, upload-time = "2025-12-04T21:14:18.104Z" },
 ]
 
 [[package]]

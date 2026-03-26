@@ -23,6 +23,7 @@ dev = [
     "mypy>=1.19.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "mypy-boto3-textract>=1.42.3",
 ]
 eda = [
     "altair>=6.0.0",
