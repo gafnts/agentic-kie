@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 
 import pymupdf
 
@@ -33,7 +34,7 @@ class PDFDocument:
     def full_text(self) -> str:
         return "\n\n".join(self._pdf_text)
 
-    @property
+    @functools.cached_property
     def all_images(self) -> list[str]:
         return self.load_images(0, self.page_count)
 

@@ -51,6 +51,11 @@ class TestAllImages:
         assert len(images) == 3
         assert all(isinstance(img, str) for img in images)
 
+    def test_caches_result(
+        self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
+    ) -> None:
+        assert pdf_document.all_images is pdf_document.all_images
+
     def test_empty_document_returns_no_images(self) -> None:
         assert PDFDocument([], b"").all_images == []
 
