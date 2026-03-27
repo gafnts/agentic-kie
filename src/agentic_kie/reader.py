@@ -38,13 +38,31 @@ class PDFDocument:
         return self.load_images(0, self.page_count)
 
     def read_text(self, start: int, end: int | None = None) -> str:
-        end = end or start + 1
+        end = end if end is not None else start + 1
+        self._validate_range(start, end)
+        if start == end:
+            return ""
         return "\n\n".join(self._pdf_text[start:end])
 
     def load_images(self, start: int, end: int | None = None) -> list[str]:
+        end = end if end is not None else start + 1
+        self._validate_range(start, end)
+        if start == end:
+            return []
         doc = pymupdf.open(stream=self._pdf_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
-        end = end or start + 1
         return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
+
+    def _validate_range(self, start: int, end: int) -> None:
+        if start < 0 or end < 0:
+            raise ValueError(
+                f"Negative indices are not supported (start={start}, end={end})."
+            )
+        if start > end:
+            raise ValueError(f"start ({start}) must not be greater than end ({end}).")
+        if start > self.page_count or end > self.page_count:
+            raise ValueError(
+                f"Range ({start}, {end}) is out of bounds for a {self.page_count}-page document."
+            )
 
     @staticmethod
     def _page_to_png(page: pymupdf.Page, dpi: int) -> str:
