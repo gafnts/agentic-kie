@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from agentic_kie.reader import PDFDocument
 
@@ -56,28 +56,18 @@ class TestReadText:
 
 class TestAllImages:
     def test_returns_base64_strings(
-        self, pdf_document: PDFDocument, mock_pymupdf_page: MagicMock
+        self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
     ) -> None:
-        mock_doc = MagicMock()
-        mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
-
-        with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
-            images = pdf_document.all_images
-
+        images = pdf_document.all_images
         assert len(images) == 3
         assert all(isinstance(img, str) for img in images)
 
     def test_applies_default_dpi_scaling(
-        self, pdf_text: list[str], pdf_bytes: bytes, mock_pymupdf_page: MagicMock
+        self, pdf_text: list[str], pdf_bytes: bytes, patched_pymupdf: MagicMock
     ) -> None:
         doc = PDFDocument(pdf_text, pdf_bytes)
-        mock_doc = MagicMock()
-        mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
-
-        with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
-            _ = doc.all_images
-
-        call_args = mock_pymupdf_page.get_pixmap.call_args
+        _ = doc.all_images
+        call_args = patched_pymupdf.get_pixmap.call_args
         matrix = call_args.kwargs.get("matrix") or call_args[0][0]
         # default dpi=150; 150 / 72 ≈ 2.08
         assert abs(matrix.a - 150 / 72) < 0.01
@@ -85,38 +75,23 @@ class TestAllImages:
 
 class TestLoadImages:
     def test_returns_images_for_range(
-        self, pdf_document: PDFDocument, mock_pymupdf_page: MagicMock
+        self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
     ) -> None:
-        mock_doc = MagicMock()
-        mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
-
-        with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
-            images = pdf_document.load_images(0, 2)
-
+        images = pdf_document.load_images(0, 2)
         assert len(images) == 2
 
     def test_returns_single_page_by_default(
-        self, pdf_document: PDFDocument, mock_pymupdf_page: MagicMock
+        self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
     ) -> None:
-        mock_doc = MagicMock()
-        mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
-
-        with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
-            images = pdf_document.load_images(1)
-
+        images = pdf_document.load_images(1)
         assert len(images) == 1
 
     def test_applies_custom_dpi_scaling(
-        self, pdf_text: list[str], pdf_bytes: bytes, mock_pymupdf_page: MagicMock
+        self, pdf_text: list[str], pdf_bytes: bytes, patched_pymupdf: MagicMock
     ) -> None:
         doc = PDFDocument(pdf_text, pdf_bytes, dpi=300)
-        mock_doc = MagicMock()
-        mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
-
-        with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
-            doc.load_images(0)
-
-        call_args = mock_pymupdf_page.get_pixmap.call_args
+        doc.load_images(0)
+        call_args = patched_pymupdf.get_pixmap.call_args
         matrix = call_args.kwargs.get("matrix") or call_args[0][0]
         # 300 / 72 ≈ 4.17
         assert abs(matrix.a - 300 / 72) < 0.01

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from collections.abc import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,7 +13,7 @@ SAMPLE_TEXT: list[str] = [
     "Jurisdiction: Delaware. Effective date: 2024-01-15.",
 ]
 
-SAMPLE_BYTES = b"%PDF-1.4 fake-pdf-bytes"
+SAMPLE_BYTES: bytes = b"%PDF-1.4 fake-pdf-bytes"
 
 
 @pytest.fixture
@@ -39,3 +40,12 @@ def mock_pymupdf_page() -> MagicMock:
     pixmap.tobytes.return_value = b"fake-png-bytes"
     page.get_pixmap.return_value = pixmap
     return page
+
+
+@pytest.fixture
+def patched_pymupdf(mock_pymupdf_page: MagicMock) -> Generator[MagicMock]:
+    """Patches pymupdf.open and yields the page mock for call inspection."""
+    mock_doc = MagicMock()
+    mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
+    with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
+        yield mock_pymupdf_page
