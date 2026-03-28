@@ -64,8 +64,8 @@ class PDFDocument:
         self._validate_range(start, end)
         if start == end:
             return []
-        doc = pymupdf.open(stream=self._pdf_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
-        return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
+        with pymupdf.open(stream=self._pdf_bytes, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
+            return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
 
     def _validate_range(self, start: int, end: int) -> None:
         if start < 0 or end < 0:

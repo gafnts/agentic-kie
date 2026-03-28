@@ -47,5 +47,6 @@ def patched_pymupdf(mock_pymupdf_page: MagicMock) -> Generator[MagicMock]:
     """Patches pymupdf.open and yields the page mock for call inspection."""
     mock_doc = MagicMock()
     mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
+    mock_doc.__enter__ = lambda self: mock_doc
     with patch("agentic_kie.document.pymupdf.open", return_value=mock_doc):
         yield mock_pymupdf_page
