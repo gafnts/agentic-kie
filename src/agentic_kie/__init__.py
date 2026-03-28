@@ -12,6 +12,7 @@ from .exceptions import (
     PasswordProtectedError,
 )
 from .extractors.base import Extractor
+from .extractors.single_pass import SinglePassExtractor
 from .loader import PDFLoader
 from .ocr import OCRProvider
 
@@ -23,6 +24,7 @@ __all__ = [
     "OCRNotConfiguredError",
     "PasswordProtectedError",
     "Extractor",
+    "SinglePassExtractor",
     "PDFLoader",
     "OCRProvider",
 ]
