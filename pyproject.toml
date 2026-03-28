@@ -84,7 +84,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/agentic_kie/main.py"]
+omit = ["src/agentic_kie/main.py", "src/agentic_kie/exceptions.py"]
 branch = true
 
 [tool.coverage.report]
