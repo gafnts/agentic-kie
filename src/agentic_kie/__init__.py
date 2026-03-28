@@ -11,6 +11,7 @@ from .exceptions import (
     OCRNotConfiguredError,
     PasswordProtectedError,
 )
+from .loader import PDFLoader
 from .ocr import OCRProvider
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     "OCRNotConfiguredError",
     "PasswordProtectedError",
     "PDFDocument",
+    "PDFLoader",
     "OCRProvider",
 ]
