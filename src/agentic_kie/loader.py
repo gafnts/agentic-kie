@@ -24,10 +24,16 @@ _DEFAULT_TEXT_THRESHOLD: int = 32
 
 class PDFLoader:
     """
-    Validates and loads a PDF file into a PDFDocument.
+    Ingestion boundary between raw PDF files and clean document representations.
 
-    Handles text layer detection, OCR routing, and structural validation
-    so that every PDFDocument returned is guaranteed usable.
+    This class absorbs real-world PDF complexity — file I/O, text-layer
+    detection, OCR routing, and error handling — so that PDFDocument can
+    remain a clean, agent-facing representation. Every PDFDocument returned
+    is guaranteed to be validated and usable.
+
+    The separation of concerns is intentional: callers interact with a
+    clean document interface without awareness of how it was loaded or
+    whether OCR was needed.
 
     Parameters
     ----------
@@ -98,11 +104,22 @@ class PDFLoader:
 
     @staticmethod
     def _validate_path(path: Path) -> None:
+        """Raise FileNotFoundError if path does not point to an existing file."""
         if not path.is_file():
             raise FileNotFoundError(f"PDF not found: {path}")
 
     @staticmethod
     def _open(path: Path) -> pymupdf.Document:
+        """
+        Open a PDF file and return the parsed document.
+
+        Raises
+        ------
+        CorruptDocumentError
+            If the file cannot be parsed as a PDF.
+        PasswordProtectedError
+            If the PDF is encrypted.
+        """
         try:
             doc = pymupdf.open(path)  # type: ignore[no-untyped-call]
         except pymupdf.FileDataError as e:
@@ -116,6 +133,7 @@ class PDFLoader:
 
     @staticmethod
     def _validate_structure(doc: pymupdf.Document) -> None:
+        """Raise EmptyDocumentError if the document has zero pages."""
         if doc.page_count == 0:
             raise EmptyDocumentError("Document has zero pages")
 
@@ -143,8 +161,12 @@ class PDFLoader:
         """
         OCR all pages, returning a page-number → text mapping.
 
-        Raises OCRNotConfiguredError if no provider is set, or
-        EmptyDocumentError if OCR produces no text.
+        Raises
+        ------
+        OCRNotConfiguredError
+            If no OCR provider is configured.
+        EmptyDocumentError
+            If OCR produces no text for any page.
         """
         if self._ocr_provider is None:
             raise OCRNotConfiguredError(

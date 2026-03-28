@@ -21,6 +21,17 @@ class PDFDocument:
 
     Consumers interact with a validated document through a simple interface
     without awareness of how it was constructed.
+
+    Parameters
+    ----------
+    pdf_text:
+        Per-page text content, one string per page.
+    pdf_bytes:
+        Raw PDF bytes used for on-demand image rendering.
+    dpi:
+        Resolution for rendering pages to images.
+    ocr:
+        Whether the text was produced by OCR rather than a native text layer.
     """
 
     def __init__(
@@ -38,21 +49,40 @@ class PDFDocument:
 
     @property
     def page_count(self) -> int:
+        """Number of pages in the document."""
         return len(self._pdf_text)
 
     @property
     def is_ocr(self) -> bool:
+        """True if text was extracted via OCR rather than a native text layer."""
         return self._ocr
 
     @property
     def full_text(self) -> str:
+        """All page text concatenated with double newlines."""
         return "\n\n".join(self._pdf_text)
 
     @functools.cached_property
     def all_images(self) -> list[str]:
+        """All pages rendered as base64-encoded PNG strings, cached on first access."""
         return self.load_images(0, self.page_count)
 
     def read_text(self, start: int, end: int | None = None) -> str:
+        """
+        Return the text of a page range as a single string.
+
+        Parameters
+        ----------
+        start:
+            Index of the first page (inclusive).
+        end:
+            Index of the last page (exclusive). Defaults to start + 1.
+
+        Raises
+        ------
+        ValueError
+            If the range is negative, inverted, or out of bounds.
+        """
         end = end if end is not None else start + 1
         self._validate_range(start, end)
         if start == end:
@@ -60,6 +90,21 @@ class PDFDocument:
         return "\n\n".join(self._pdf_text[start:end])
 
     def load_images(self, start: int, end: int | None = None) -> list[str]:
+        """
+        Render a page range as base64-encoded PNG strings.
+
+        Parameters
+        ----------
+        start:
+            Index of the first page (inclusive).
+        end:
+            Index of the last page (exclusive). Defaults to start + 1.
+
+        Raises
+        ------
+        ValueError
+            If the range is negative, inverted, or out of bounds.
+        """
         end = end if end is not None else start + 1
         self._validate_range(start, end)
         if start == end:
@@ -68,6 +113,15 @@ class PDFDocument:
             return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
 
     def _validate_range(self, start: int, end: int) -> None:
+        """
+        Assert that a half-open page range is valid for this document.
+
+        Raises
+        ------
+        ValueError
+            If either bound is negative, start exceeds end, or the range
+            extends beyond the document's page count.
+        """
         if start < 0 or end < 0:
             raise ValueError(
                 f"Negative indices are not supported (start={start}, end={end})."
@@ -81,6 +135,7 @@ class PDFDocument:
 
     @staticmethod
     def _page_to_png(page: pymupdf.Page, dpi: int) -> str:
+        """Render a single page to a base64-encoded PNG string at the given DPI."""
         matrix = pymupdf.Matrix(dpi / 72, dpi / 72)  # type: ignore[no-untyped-call]
         pixmap = page.get_pixmap(matrix=matrix)
         return base64.b64encode(pixmap.tobytes("png")).decode()  # type: ignore[no-untyped-call]
