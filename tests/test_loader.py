@@ -30,13 +30,13 @@ def _make_doc(
     *,
     is_encrypted: bool = False,
     chars_per_page: int = 100,
-) -> tuple[MagicMock, MagicMock]:
-    page = _make_page("x" * chars_per_page)
+) -> tuple[MagicMock, list[MagicMock]]:
+    pages = [_make_page("x" * chars_per_page) for _ in range(page_count)]
     doc = MagicMock()
     doc.is_encrypted = is_encrypted
     doc.page_count = page_count
-    doc.__getitem__ = lambda self, i: page
-    return doc, page
+    doc.__getitem__ = lambda self, i: pages[i]
+    return doc, pages
 
 
 @pytest.fixture
@@ -83,10 +83,12 @@ class TestLoad:
     def test_scanned_pdf_calls_ocr_per_page(
         self, pdf_path: Path, mock_ocr_provider: MagicMock
     ) -> None:
-        doc, _ = _make_doc(page_count=3, chars_per_page=0)
+        doc, pages = _make_doc(page_count=3, chars_per_page=0)
         with patch("agentic_kie.loader.pymupdf.open", return_value=doc):
             PDFLoader(ocr_provider=mock_ocr_provider).load(pdf_path)
         assert mock_ocr_provider.extract_text.call_count == 3
+        for page in pages:
+            page.get_pixmap.assert_called_once()
 
     def test_doc_is_closed_after_successful_load(self, pdf_path: Path) -> None:
         doc, _ = _make_doc(chars_per_page=100)
@@ -210,9 +212,9 @@ class TestRunOcr:
     def test_passes_dpi_to_get_pixmap(
         self, pdf_path: Path, mock_ocr_provider: MagicMock
     ) -> None:
-        doc, page = _make_doc(page_count=1, chars_per_page=0)
+        doc, pages = _make_doc(page_count=1, chars_per_page=0)
         PDFLoader(ocr_provider=mock_ocr_provider, dpi=300)._run_ocr(doc, pdf_path)
-        page.get_pixmap.assert_called_once_with(dpi=300)
+        pages[0].get_pixmap.assert_called_once_with(dpi=300)
 
     def test_raises_when_no_provider(self, pdf_path: Path) -> None:
         doc, _ = _make_doc()
