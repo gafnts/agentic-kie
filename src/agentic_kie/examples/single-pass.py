@@ -25,7 +25,7 @@ file_path = (
 def main() -> None:
     claude = ChatAnthropic(model="claude-haiku-4-5")
     gemini = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-    gpt = ChatOpenAI(name="gpt-5.4")
+    gpt = ChatOpenAI(model="gpt-5.4")
 
     claude_extractor = SinglePassExtractor(model=claude, schema=NDA)
     gemini_extractor = SinglePassExtractor(model=gemini, schema=NDA)
