@@ -84,12 +84,9 @@ class PDFLoader:
             self._validate_structure(doc)
             pdf_bytes = path.read_bytes()
 
-            if self._has_text_layer(doc):
+            text_pages = self._try_read_text_layer(doc)
+            if text_pages is not None:
                 logger.info("Text layer detected in '%s'", path.name)
-                text_pages = [
-                    cast(str, doc[i].get_text("text")).strip()  # type: ignore[no-untyped-call]
-                    for i in range(doc.page_count)
-                ]
                 return PDFDocument(text_pages, pdf_bytes, dpi=self._dpi)
 
             logger.info("No text layer in '%s', routing to OCR", path.name)
@@ -137,17 +134,19 @@ class PDFLoader:
         if doc.page_count == 0:
             raise EmptyDocumentError("Document has zero pages")
 
-    def _has_text_layer(self, doc: pymupdf.Document) -> bool:
+    def _try_read_text_layer(self, doc: pymupdf.Document) -> list[str] | None:
         """
-        Check whether the document has a meaningful text layer.
+        Extract text from all pages if the document has a meaningful text layer.
 
-        Uses a simple heuristic: average characters per page must
-        exceed the configured threshold.
+        Uses a simple heuristic: average characters per page must exceed the
+        configured threshold. Returns the stripped page texts if the layer is
+        present, or None if the document should be routed to OCR.
         """
-        total_chars = sum(
-            len(cast(str, doc[i].get_text("text")).strip())  # type: ignore[no-untyped-call, misc]
+        pages = [
+            cast(str, doc[i].get_text("text")).strip()  # type: ignore[no-untyped-call]
             for i in range(doc.page_count)
-        )
+        ]
+        total_chars = sum(len(p) for p in pages)
         avg_chars = total_chars / doc.page_count
         logger.debug(
             "Text layer check: %d total chars, %.1f avg/page (threshold: %d)",
@@ -155,7 +154,7 @@ class PDFLoader:
             avg_chars,
             self._text_threshold,
         )
-        return bool(avg_chars >= self._text_threshold)
+        return pages if avg_chars >= self._text_threshold else None
 
     def _run_ocr(self, doc: pymupdf.Document, path: Path) -> dict[int, str]:
         """

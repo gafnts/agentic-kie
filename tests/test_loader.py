@@ -90,6 +90,13 @@ class TestLoad:
         for page in pages:
             page.get_pixmap.assert_called_once()
 
+    def test_text_pdf_reads_each_page_once(self, pdf_path: Path) -> None:
+        doc, pages = _make_doc(page_count=3, chars_per_page=100)
+        with patch("agentic_kie.loader.pymupdf.open", return_value=doc):
+            PDFLoader().load(pdf_path)
+        for page in pages:
+            page.get_text.assert_called_once()
+
     def test_doc_is_closed_after_successful_load(self, pdf_path: Path) -> None:
         doc, _ = _make_doc(chars_per_page=100)
         with patch("agentic_kie.loader.pymupdf.open", return_value=doc):
@@ -170,26 +177,34 @@ class TestLoad:
             PDFLoader(ocr_provider=mock_ocr_provider).load(pdf_path)
 
 
-class TestHasTextLayer:
-    def test_returns_true_when_avg_exceeds_threshold(self) -> None:
+class TestTryReadTextLayer:
+    def test_returns_pages_when_avg_exceeds_threshold(self) -> None:
         doc, _ = _make_doc(page_count=1, chars_per_page=100)
-        assert PDFLoader()._has_text_layer(doc) is True
+        assert PDFLoader()._try_read_text_layer(doc) is not None
 
-    def test_returns_false_when_avg_below_threshold(self) -> None:
+    def test_returns_none_when_avg_below_threshold(self) -> None:
         doc, _ = _make_doc(page_count=1, chars_per_page=0)
-        assert PDFLoader()._has_text_layer(doc) is False
+        assert PDFLoader()._try_read_text_layer(doc) is None
 
     def test_uses_configured_threshold(self) -> None:
         doc, _ = _make_doc(page_count=1, chars_per_page=10)
-        assert PDFLoader(text_threshold=5)._has_text_layer(doc) is True
-        assert PDFLoader(text_threshold=20)._has_text_layer(doc) is False
+        assert PDFLoader(text_threshold=5)._try_read_text_layer(doc) is not None
+        assert PDFLoader(text_threshold=20)._try_read_text_layer(doc) is None
 
     def test_averages_across_all_pages(self) -> None:
         pages = [_make_page("x" * 100), _make_page("")]
         doc = MagicMock()
         doc.page_count = 2
         doc.__getitem__ = lambda self, i: pages[i]
-        assert PDFLoader()._has_text_layer(doc) is True
+        assert PDFLoader()._try_read_text_layer(doc) is not None
+
+    def test_returns_stripped_page_texts(self) -> None:
+        pages = [_make_page("  hello  "), _make_page(" world ")]
+        doc = MagicMock()
+        doc.page_count = 2
+        doc.__getitem__ = lambda self, i: pages[i]
+        result = PDFLoader(text_threshold=1)._try_read_text_layer(doc)
+        assert result == ["hello", "world"]
 
 
 class TestRunOcr:
