@@ -7,7 +7,21 @@ import pymupdf
 
 
 class PDFDocument:
-    """Parsed PDF representation exposing text and vision modalities."""
+    """
+    Immutable document representation exposing text and vision modalities.
+
+    This class is deliberately separated from the ingestion boundary
+    (PDFLoader). The loader absorbs real-world PDF complexity — file I/O,
+    text-layer detection, OCR routing, and error handling — so that this
+    class can remain a clean, agent-facing representation.
+
+    Raw PDF bytes are held in memory rather than re-reading from disk,
+    so the agent can render any page or range of pages as many times as
+    needed without additional I/O.
+
+    Consumers interact with a validated document through a simple interface
+    without awareness of how it was constructed.
+    """
 
     def __init__(
         self,
