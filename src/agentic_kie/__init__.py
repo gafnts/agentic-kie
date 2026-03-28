@@ -11,16 +11,20 @@ from .exceptions import (
     OCRNotConfiguredError,
     PasswordProtectedError,
 )
+from .extractors.base import Extractor
+from .extractors.single_pass import SinglePassExtractor
 from .loader import PDFLoader
 from .ocr import OCRProvider
 
 __all__ = [
+    "PDFDocument",
     "CorruptDocumentError",
     "DocumentLoadError",
     "EmptyDocumentError",
     "OCRNotConfiguredError",
     "PasswordProtectedError",
-    "PDFDocument",
+    "Extractor",
+    "SinglePassExtractor",
     "PDFLoader",
     "OCRProvider",
 ]
