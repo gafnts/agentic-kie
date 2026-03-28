@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from agentic_kie.reader import PDFDocument
+from agentic_kie.document import PDFDocument
 
 
 class TestPageCount:

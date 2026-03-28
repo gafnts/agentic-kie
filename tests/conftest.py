@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agentic_kie.reader import PDFDocument
+from agentic_kie.document import PDFDocument
 
 SAMPLE_TEXT: list[str] = [
     "This Non-Disclosure Agreement is entered into...",
@@ -47,5 +47,5 @@ def patched_pymupdf(mock_pymupdf_page: MagicMock) -> Generator[MagicMock]:
     """Patches pymupdf.open and yields the page mock for call inspection."""
     mock_doc = MagicMock()
     mock_doc.__getitem__ = lambda self, i: mock_pymupdf_page
-    with patch("agentic_kie.reader.pymupdf.open", return_value=mock_doc):
+    with patch("agentic_kie.document.pymupdf.open", return_value=mock_doc):
         yield mock_pymupdf_page
