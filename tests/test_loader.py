@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pymupdf
 import pytest
 
 from agentic_kie.document import PDFDocument
@@ -106,10 +107,26 @@ class TestLoad:
         with pytest.raises(FileNotFoundError, match="PDF not found"):
             PDFLoader().load(tmp_path / "nonexistent.pdf")
 
+    def test_raises_file_not_found_for_directory_path(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError, match="PDF not found"):
+            PDFLoader().load(tmp_path)
+
     def test_raises_corrupt_document_on_bad_pdf(self, pdf_path: Path) -> None:
         with (
-            patch("agentic_kie.loader.pymupdf.open", side_effect=Exception("bad file")),
+            patch(
+                "agentic_kie.loader.pymupdf.open",
+                side_effect=pymupdf.FileDataError("bad file"),
+            ),
             pytest.raises(CorruptDocumentError),
+        ):
+            PDFLoader().load(pdf_path)
+
+    def test_permission_error_propagates_from_open(self, pdf_path: Path) -> None:
+        with (
+            patch(
+                "agentic_kie.loader.pymupdf.open", side_effect=PermissionError("denied")
+            ),
+            pytest.raises(PermissionError),
         ):
             PDFLoader().load(pdf_path)
 
@@ -166,7 +183,6 @@ class TestHasTextLayer:
         assert PDFLoader(text_threshold=20)._has_text_layer(doc) is False
 
     def test_averages_across_all_pages(self) -> None:
-        # Page 0: 100 chars, page 1: 0 chars → avg 50 → above default threshold of 32
         pages = [_make_page("x" * 100), _make_page("")]
         doc = MagicMock()
         doc.page_count = 2

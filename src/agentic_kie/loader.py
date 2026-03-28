@@ -98,14 +98,14 @@ class PDFLoader:
 
     @staticmethod
     def _validate_path(path: Path) -> None:
-        if not path.exists():
+        if not path.is_file():
             raise FileNotFoundError(f"PDF not found: {path}")
 
     @staticmethod
     def _open(path: Path) -> pymupdf.Document:
         try:
             doc = pymupdf.open(path)  # type: ignore[no-untyped-call]
-        except Exception as e:
+        except pymupdf.FileDataError as e:
             raise CorruptDocumentError(f"Cannot parse '{path.name}' as PDF: {e}") from e
 
         if doc.is_encrypted:
