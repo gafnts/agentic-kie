@@ -1,0 +1,141 @@
+from __future__ import annotations
+
+import base64
+import functools
+
+import pymupdf
+
+
+class PDFDocument:
+    """
+    Immutable document representation exposing text and vision modalities.
+
+    This class is deliberately separated from the ingestion boundary
+    (PDFLoader). The loader absorbs real-world PDF complexity — file I/O,
+    text-layer detection, OCR routing, and error handling — so that this
+    class can remain a clean, agent-facing representation.
+
+    Raw PDF bytes are held in memory rather than re-reading from disk,
+    so the agent can render any page or range of pages as many times as
+    needed without additional I/O.
+
+    Consumers interact with a validated document through a simple interface
+    without awareness of how it was constructed.
+
+    Parameters
+    ----------
+    pdf_text:
+        Per-page text content, one string per page.
+    pdf_bytes:
+        Raw PDF bytes used for on-demand image rendering.
+    dpi:
+        Resolution for rendering pages to images.
+    ocr:
+        Whether the text was produced by OCR rather than a native text layer.
+    """
+
+    def __init__(
+        self,
+        pdf_text: list[str],
+        pdf_bytes: bytes,
+        *,
+        dpi: int = 150,
+        ocr: bool = False,
+    ) -> None:
+        self._pdf_text = pdf_text
+        self._pdf_bytes = pdf_bytes
+        self._dpi = dpi
+        self._ocr = ocr
+
+    @property
+    def page_count(self) -> int:
+        """Number of pages in the document."""
+        return len(self._pdf_text)
+
+    @property
+    def is_ocr(self) -> bool:
+        """True if text was extracted via OCR rather than a native text layer."""
+        return self._ocr
+
+    @property
+    def full_text(self) -> str:
+        """All page text concatenated with double newlines."""
+        return "\n\n".join(self._pdf_text)
+
+    @functools.cached_property
+    def all_images(self) -> list[str]:
+        """All pages rendered as base64-encoded PNG strings, cached on first access."""
+        return self.load_images(0, self.page_count)
+
+    def read_text(self, start: int, end: int | None = None) -> str:
+        """
+        Return the text of a page range as a single string.
+
+        Parameters
+        ----------
+        start:
+            Index of the first page (inclusive).
+        end:
+            Index of the last page (exclusive). Defaults to start + 1.
+
+        Raises
+        ------
+        ValueError
+            If the range is negative, inverted, or out of bounds.
+        """
+        end = end if end is not None else start + 1
+        self._validate_range(start, end)
+        if start == end:
+            return ""
+        return "\n\n".join(self._pdf_text[start:end])
+
+    def load_images(self, start: int, end: int | None = None) -> list[str]:
+        """
+        Render a page range as base64-encoded PNG strings.
+
+        Parameters
+        ----------
+        start:
+            Index of the first page (inclusive).
+        end:
+            Index of the last page (exclusive). Defaults to start + 1.
+
+        Raises
+        ------
+        ValueError
+            If the range is negative, inverted, or out of bounds.
+        """
+        end = end if end is not None else start + 1
+        self._validate_range(start, end)
+        if start == end:
+            return []
+        with pymupdf.open(stream=self._pdf_bytes, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
+            return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
+
+    def _validate_range(self, start: int, end: int) -> None:
+        """
+        Assert that a half-open page range is valid for this document.
+
+        Raises
+        ------
+        ValueError
+            If either bound is negative, start exceeds end, or the range
+            extends beyond the document's page count.
+        """
+        if start < 0 or end < 0:
+            raise ValueError(
+                f"Negative indices are not supported (start={start}, end={end})."
+            )
+        if start > end:
+            raise ValueError(f"start ({start}) must not be greater than end ({end}).")
+        if start > self.page_count or end > self.page_count:
+            raise ValueError(
+                f"Range ({start}, {end}) is out of bounds for a {self.page_count}-page document."
+            )
+
+    @staticmethod
+    def _page_to_png(page: pymupdf.Page, dpi: int) -> str:
+        """Render a single page to a base64-encoded PNG string at the given DPI."""
+        matrix = pymupdf.Matrix(dpi / 72, dpi / 72)  # type: ignore[no-untyped-call]
+        pixmap = page.get_pixmap(matrix=matrix)
+        return base64.b64encode(pixmap.tobytes("png")).decode()  # type: ignore[no-untyped-call]

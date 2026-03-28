@@ -8,9 +8,11 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "boto3>=1.42.73",
     "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
     "pydantic>=2.12.5",
-    "pymupdf>=1.27.2",
+    "pymupdf>=1.27.2.2",
 ]
 
 [dependency-groups]
@@ -19,14 +21,15 @@ dev = [
     "pre-commit>=4.5.1",
     "ruff>=0.15.4",
     "mypy>=1.19.1",
-    "pandas-stubs>=3.0.0.260204",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "mypy-boto3-textract>=1.42.3",
 ]
 eda = [
     "altair>=6.0.0",
     "nda",
     "pandas>=3.0.1",
+    "pandas-stubs>=3.0.0.260204",
     "tiktoken>=0.12.0",
 ]
 
@@ -75,10 +78,13 @@ warn_required_dynamic_aliases = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+filterwarnings = [
+    "ignore::DeprecationWarning:importlib._bootstrap",
+]
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/agentic_kie/main.py"]
+omit = ["src/agentic_kie/main.py", "src/agentic_kie/exceptions.py"]
 branch = true
 
 [tool.coverage.report]
