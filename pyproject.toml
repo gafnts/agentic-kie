@@ -70,7 +70,10 @@ disallow_untyped_defs = false
 disallow_any_expr = false
 
 [[tool.mypy.overrides]]
-module = "agentic_kie.examples.*"
+module = [
+    "agentic_kie.examples.*",
+    "agentic_kie.examples.*.*",
+]
 ignore_errors = true
 
 [tool.pydantic-mypy]
