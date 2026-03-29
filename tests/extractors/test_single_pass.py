@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,7 +29,9 @@ def mock_chain() -> MagicMock:
 @pytest.fixture
 def mock_model(mock_chain: MagicMock) -> MagicMock:
     model = MagicMock()
-    model.with_structured_output.return_value = mock_chain
+    structured = MagicMock()
+    structured.with_retry.return_value = mock_chain
+    model.with_structured_output.return_value = structured
     return model
 
 
@@ -50,6 +53,27 @@ class TestInit:
     def test_defaults_to_text_only(self, mock_model: MagicMock) -> None:
         extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
         assert extractor._modality == "text"
+
+    def test_default_max_retries_composes_retry(self, mock_model: MagicMock) -> None:
+        SinglePassExtractor(model=mock_model, schema=_Schema)
+        structured = mock_model.with_structured_output.return_value
+        structured.with_retry.assert_called_once_with(stop_after_attempt=4)
+
+    def test_custom_max_retries_is_forwarded(self, mock_model: MagicMock) -> None:
+        SinglePassExtractor(model=mock_model, schema=_Schema, max_retries=5)
+        structured = mock_model.with_structured_output.return_value
+        structured.with_retry.assert_called_once_with(stop_after_attempt=6)
+
+    def test_zero_retries_disables_retry(self, mock_model: MagicMock) -> None:
+        SinglePassExtractor(model=mock_model, schema=_Schema, max_retries=0)
+        structured = mock_model.with_structured_output.return_value
+        structured.with_retry.assert_called_once_with(stop_after_attempt=1)
+
+    def test_negative_max_retries_raises_value_error(
+        self, mock_model: MagicMock
+    ) -> None:
+        with pytest.raises(ValueError):
+            SinglePassExtractor(model=mock_model, schema=_Schema, max_retries=-1)
 
 
 class TestExtract:
@@ -251,3 +275,66 @@ class TestBuildContent:
         content = extractor._build_content(pdf_document)
         assert isinstance(content, list)
         assert len(content) == pdf_document.page_count
+
+
+class TestLogging:
+    def test_logs_extraction_start_at_info(
+        self,
+        mock_model: MagicMock,
+        mock_chain: MagicMock,
+        pdf_document: PDFDocument,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
+        with caplog.at_level(logging.INFO):
+            extractor.extract(pdf_document)
+        assert any(
+            "_Schema" in r.message and "3-page" in r.message for r in caplog.records
+        )
+
+    def test_logs_extraction_complete_at_info(
+        self,
+        mock_model: MagicMock,
+        mock_chain: MagicMock,
+        pdf_document: PDFDocument,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
+        with caplog.at_level(logging.INFO):
+            extractor.extract(pdf_document)
+        assert any(
+            "complete" in r.message.lower() and "_Schema" in r.message
+            for r in caplog.records
+        )
+
+    def test_logs_text_payload_size_at_debug(
+        self,
+        mock_model: MagicMock,
+        mock_chain: MagicMock,
+        pdf_document: PDFDocument,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
+        with caplog.at_level(logging.DEBUG):
+            extractor.extract(pdf_document)
+        assert any(
+            r.levelno == logging.DEBUG and "characters" in r.message
+            for r in caplog.records
+        )
+
+    def test_logs_image_payload_size_at_debug(
+        self,
+        mock_model: MagicMock,
+        mock_chain: MagicMock,
+        pdf_document: PDFDocument,
+        patched_pymupdf: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        extractor = SinglePassExtractor(
+            model=mock_model, schema=_Schema, modality="image"
+        )
+        with caplog.at_level(logging.DEBUG):
+            extractor.extract(pdf_document)
+        assert any(
+            r.levelno == logging.DEBUG and "blocks" in r.message for r in caplog.records
+        )

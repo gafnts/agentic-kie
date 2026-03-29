@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,6 +10,8 @@ from nda import NDA
 
 from agentic_kie.extractors.single_pass import SinglePassExtractor
 from agentic_kie.loader import PDFLoader
+
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
