@@ -16,9 +16,9 @@ file_path = (
     Path().cwd()
     / "notebooks"
     / "data"
-    / "dev-0"
+    / "train"
     / "documents"
-    / "52aaf701a2c24c940628e155dabacdbf.pdf"
+    / "00a1d238e37ac225b8045a97953e845d.pdf"
 )
 
 
