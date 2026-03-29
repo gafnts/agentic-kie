@@ -49,7 +49,7 @@ class TestInit:
 
     def test_defaults_to_text_only(self, mock_model: MagicMock) -> None:
         extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
-        assert extractor._multimodal is False
+        assert extractor._modality == "text"
 
 
 class TestExtract:
@@ -112,7 +112,7 @@ class TestBuildContent:
         patched_pymupdf: MagicMock,
     ) -> None:
         extractor = SinglePassExtractor(
-            model=mock_model, schema=_Schema, multimodal=True
+            model=mock_model, schema=_Schema, modality="multimodal"
         )
         content = extractor._build_content(pdf_document)
         assert isinstance(content, list)
@@ -124,7 +124,7 @@ class TestBuildContent:
         patched_pymupdf: MagicMock,
     ) -> None:
         extractor = SinglePassExtractor(
-            model=mock_model, schema=_Schema, multimodal=True
+            model=mock_model, schema=_Schema, modality="multimodal"
         )
         content = extractor._build_content(pdf_document)
         assert isinstance(content, list)
@@ -139,7 +139,7 @@ class TestBuildContent:
         patched_pymupdf: MagicMock,
     ) -> None:
         extractor = SinglePassExtractor(
-            model=mock_model, schema=_Schema, multimodal=True
+            model=mock_model, schema=_Schema, modality="multimodal"
         )
         content = extractor._build_content(pdf_document)
         assert isinstance(content, list)
@@ -155,7 +155,7 @@ class TestBuildContent:
         patched_pymupdf: MagicMock,
     ) -> None:
         extractor = SinglePassExtractor(
-            model=mock_model, schema=_Schema, multimodal=True
+            model=mock_model, schema=_Schema, modality="multimodal"
         )
         content = extractor._build_content(pdf_document)
         assert isinstance(content, list)
@@ -173,8 +173,81 @@ class TestBuildContent:
         patched_pymupdf: MagicMock,
     ) -> None:
         extractor = SinglePassExtractor(
-            model=mock_model, schema=_Schema, multimodal=True
+            model=mock_model, schema=_Schema, modality="multimodal"
         )
         content = extractor._build_content(pdf_document)
         assert isinstance(content, list)
         assert len(content) == pdf_document.page_count + 1
+
+    def test_image_returns_list(
+        self,
+        mock_model: MagicMock,
+        pdf_document: PDFDocument,
+        patched_pymupdf: MagicMock,
+    ) -> None:
+        extractor = SinglePassExtractor(
+            model=mock_model, schema=_Schema, modality="image"
+        )
+        content = extractor._build_content(pdf_document)
+        assert isinstance(content, list)
+
+    def test_image_has_no_text_block(
+        self,
+        mock_model: MagicMock,
+        pdf_document: PDFDocument,
+        patched_pymupdf: MagicMock,
+    ) -> None:
+        extractor = SinglePassExtractor(
+            model=mock_model, schema=_Schema, modality="image"
+        )
+        content = extractor._build_content(pdf_document)
+        assert isinstance(content, list)
+        text_blocks = [
+            c for c in content if isinstance(c, dict) and c.get("type") == "text"
+        ]
+        assert len(text_blocks) == 0
+
+    def test_image_includes_one_image_per_page(
+        self,
+        mock_model: MagicMock,
+        pdf_document: PDFDocument,
+        patched_pymupdf: MagicMock,
+    ) -> None:
+        extractor = SinglePassExtractor(
+            model=mock_model, schema=_Schema, modality="image"
+        )
+        content = extractor._build_content(pdf_document)
+        assert isinstance(content, list)
+        image_blocks = [
+            c for c in content if isinstance(c, dict) and c["type"] == "image_url"
+        ]
+        assert len(image_blocks) == pdf_document.page_count
+
+    def test_image_images_are_base64_data_urls(
+        self,
+        mock_model: MagicMock,
+        pdf_document: PDFDocument,
+        patched_pymupdf: MagicMock,
+    ) -> None:
+        extractor = SinglePassExtractor(
+            model=mock_model, schema=_Schema, modality="image"
+        )
+        content = extractor._build_content(pdf_document)
+        assert isinstance(content, list)
+        for block in content:
+            assert isinstance(block, dict)
+            url = block["image_url"]["url"]
+            assert url.startswith("data:image/png;base64,")
+
+    def test_image_total_blocks_equals_page_count(
+        self,
+        mock_model: MagicMock,
+        pdf_document: PDFDocument,
+        patched_pymupdf: MagicMock,
+    ) -> None:
+        extractor = SinglePassExtractor(
+            model=mock_model, schema=_Schema, modality="image"
+        )
+        content = extractor._build_content(pdf_document)
+        assert isinstance(content, list)
+        assert len(content) == pdf_document.page_count

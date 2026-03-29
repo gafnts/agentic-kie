@@ -25,11 +25,11 @@ file_path = (
 def main() -> None:
     claude = ChatAnthropic(model="claude-haiku-4-5")
     gemini = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-    gpt = ChatOpenAI(model="gpt-5.4")
+    gpt = ChatOpenAI(model_name="gpt-5.4")
 
-    claude_extractor = SinglePassExtractor(model=claude, schema=NDA)
-    gemini_extractor = SinglePassExtractor(model=gemini, schema=NDA)
-    gpt_extractor = SinglePassExtractor(model=gpt, schema=NDA)
+    claude_extractor = SinglePassExtractor(model=claude, schema=NDA, modality="image")
+    gemini_extractor = SinglePassExtractor(model=gemini, schema=NDA, modality="image")
+    gpt_extractor = SinglePassExtractor(model=gpt, schema=NDA, modality="image")
 
     loader = PDFLoader()
     doc = loader.load(file_path)

@@ -9,13 +9,29 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "langchain>=1.2.10",
+    "pydantic>=2.12.5",
+    "pymupdf>=1.27.2.2",
+    "python-dotenv>=1.2.2",
+]
+
+[project.optional-dependencies]
+all = [
     "langchain-anthropic>=1.4.0",
     "langchain-community>=0.4.1",
     "langchain-google-genai>=4.2.1",
     "langchain-openai>=1.1.12",
-    "pydantic>=2.12.5",
-    "pymupdf>=1.27.2.2",
-    "python-dotenv>=1.2.2",
+]
+anthropic = [
+    "langchain-anthropic>=1.4.0",
+]
+bedrock = [
+    "langchain-community>=0.4.1",
+]
+google = [
+    "langchain-google-genai>=4.2.1",
+]
+openai = [
+    "langchain-openai>=1.1.12",
 ]
 
 [dependency-groups]
@@ -50,6 +66,7 @@ source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentic_kie"]
+exclude = ["src/agentic_kie/examples"]
 
 [tool.ruff]
 src = ["src"]
@@ -70,8 +87,15 @@ disallow_untyped_defs = false
 disallow_any_expr = false
 
 [[tool.mypy.overrides]]
-module = "agentic_kie.examples.*"
+module = [
+    "agentic_kie.examples.*",
+    "agentic_kie.examples.*.*",
+]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "nda"
+ignore_missing_imports = true
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

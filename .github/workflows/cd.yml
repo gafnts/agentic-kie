@@ -33,7 +33,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --dev --frozen
+        run: uv sync --dev --all-extras --frozen
 
       - name: Run ruff check
         run: uv run ruff check
@@ -58,7 +58,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --dev --frozen
+        run: uv sync --dev --all-extras --frozen
 
       - name: Run tests
         run: uv run pytest --cov --cov-branch
