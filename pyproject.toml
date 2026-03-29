@@ -59,7 +59,7 @@ build-backend = "hatchling.build"
 link-mode = "copy"
 
 [tool.uv.sources]
-nda = { git = "https://github.com/gafnts/kleister-nda-preparation" }
+nda = { git = "https://github.com/gafnts/kleister-nda-preparation", tag = "v0.2.0"  }
 
 [tool.hatch.version]
 source = "vcs"
