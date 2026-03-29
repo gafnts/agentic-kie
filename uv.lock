@@ -17,7 +17,6 @@ dependencies = [
     { name = "langchain" },
     { name = "pydantic" },
     { name = "pymupdf" },
-    { name = "python-dotenv" },
 ]
 
 [package.optional-dependencies]
@@ -47,6 +46,7 @@ dev = [
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "python-dotenv" },
     { name = "ruff" },
 ]
 eda = [
@@ -70,7 +70,6 @@ requires-dist = [
     { name = "langchain-openai", marker = "extra == 'openai'", specifier = ">=1.1.12" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pymupdf", specifier = ">=1.27.2.2" },
-    { name = "python-dotenv", specifier = ">=1.2.2" },
 ]
 provides-extras = ["all", "anthropic", "bedrock", "google", "openai"]
 
@@ -81,6 +80,7 @@ dev = [
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "ruff", specifier = ">=0.15.4" },
 ]
 eda = [
