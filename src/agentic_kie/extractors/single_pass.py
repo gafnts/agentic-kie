@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -17,10 +17,10 @@ class SinglePassExtractor[T: BaseModel]:
     """
     Single-pass extraction strategy.
 
-    Builds a prompt from the full document content — text only, or text
-    plus rendered page images when multimodal — invokes the model with
-    structured output bound to the target schema, and returns a validated
-    Pydantic instance.
+    Builds a prompt from the full document content — text only, page
+    images only, or both — invokes the model with structured output
+    bound to the target schema, and returns a validated Pydantic
+    instance.
 
     The structured-output chain is built once at construction time and
     reused across documents, avoiding redundant setup when processing
@@ -35,9 +35,12 @@ class SinglePassExtractor[T: BaseModel]:
         The Pydantic model class defining extraction targets.
         Field names, types, and descriptions are forwarded to
         the model via LangChain's structured output binding.
-    multimodal:
-        If True, include all page images alongside the text
-        in the prompt. Defaults to text-only.
+    modality:
+        Controls which document representations are sent to the
+        model. ``"text"`` sends only the extracted text,
+        ``"image"`` sends only rendered page images, and
+        ``"multimodal"`` sends the text followed by the images.
+        Defaults to ``"text"``.
     system_prompt:
         Override the default system prompt. If None, uses
         the built-in extraction prompt.
@@ -48,11 +51,11 @@ class SinglePassExtractor[T: BaseModel]:
         model: BaseChatModel,
         schema: type[T],
         *,
-        multimodal: bool = False,
+        modality: Literal["text", "image", "multimodal"] = "text",
         system_prompt: str | None = None,
     ) -> None:
         self._schema = schema
-        self._multimodal = multimodal
+        self._modality = modality
         self._system_prompt = system_prompt or SINGLE_PASS_SYSTEM_PROMPT
         self._chain: Runnable[Any, Any] = model.with_structured_output(schema)
 
@@ -76,27 +79,27 @@ class SinglePassExtractor[T: BaseModel]:
 
         return cast(T, self._chain.invoke(messages))
 
-    def _build_content(self, document: PDFDocument) -> str | list[str | dict[Any, Any]]:
+    def _build_content(self, document: PDFDocument) -> str | list[str | dict[str, Any]]:
         """
         Build the content payload for the human message.
 
-        For text-only mode, returns the full document text as a string.
-        For multimodal mode, returns a list of content blocks: the full
-        text first, followed by one base64-encoded PNG per page.
+        For ``"text"`` modality, returns the full document text as a string.
+        For ``"image"``, returns a list with one base64-encoded PNG block
+        per page. For ``"multimodal"``, returns the full text block followed
+        by the image blocks.
         """
-        if not self._multimodal:
+        if self._modality == "text":
             return document.full_text
 
-        content: list[str | dict[Any, Any]] = [
-            {"type": "text", "text": document.full_text},
+        image_blocks: list[str | dict[str, Any]] = [
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{b64}"},
+            }
+            for b64 in document.all_images
         ]
 
-        for b64 in document.all_images:
-            content.append(
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{b64}"},
-                }
-            )
+        if self._modality == "image":
+            return image_blocks
 
-        return content
+        return [{"type": "text", "text": document.full_text}, *image_blocks]
