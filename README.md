@@ -18,6 +18,8 @@ A Python package for extracting structured information from PDF documents using 
   - [Scanned documents and OCR](#scanned-documents-and-ocr)
   - [Error handling](#error-handling)
 - [Extraction strategies](#extraction-strategies)
+  - [Single-pass extraction](#single-pass-extraction)
+  - [Agentic extraction](#agentic-extraction)
 - [Contributing](#contributing)
 
 ---
@@ -130,12 +132,54 @@ except DocumentLoadError as e:
 
 ## Extraction strategies
 
-The extraction layer is under active development. Two strategies are planned:
+All extractors satisfy the `Extractor` protocol — a single `extract(document) -> T` method that takes a `PDFDocument` and returns a validated instance of your Pydantic schema. This lets you swap strategies without changing calling code.
 
-- **Single-pass**: issues one structured prompt and parses the response directly against a Pydantic schema. Fast and predictable; suitable for well-structured documents.
-- **Agentic**: a [LangChain](https://python.langchain.com/)-powered agent loop that can reason iteratively, call tools, and refine its output over multiple steps. Better suited for complex or ambiguous documents.
+### Single-pass extraction
 
-Both strategies will accept a `PDFDocument` and a user-defined Pydantic schema, and return a validated extraction result.
+`SinglePassExtractor` issues one structured LLM call and parses the response directly against a Pydantic schema. Fast, predictable, and suitable for well-structured documents.
+
+```python
+from pydantic import BaseModel
+from langchain_openai import ChatOpenAI
+from agentic_kie import PDFLoader, SinglePassExtractor
+
+class Invoice(BaseModel):
+    vendor: str
+    total: float
+    currency: str
+    due_date: str | None
+
+loader = PDFLoader()
+doc = loader.load(Path("invoice.pdf"))
+
+extractor = SinglePassExtractor(
+    model=ChatOpenAI(model="gpt-4o"),
+    schema=Invoice,
+)
+
+result = extractor.extract(doc)
+print(result.vendor, result.total)
+```
+
+#### Constructor parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `model` | `BaseChatModel` | *required* | Any [LangChain chat model](https://python.langchain.com/docs/integrations/chat/) (ChatOpenAI, ChatAnthropic, ChatBedrock, etc.) |
+| `schema` | `type[T]` | *required* | Pydantic model class defining the fields to extract |
+| `modality` | `"text" \| "image" \| "multimodal"` | `"text"` | Which document representations to send to the model |
+| `system_prompt` | `str \| None` | `None` | Custom system prompt (uses a sensible default when omitted) |
+| `max_retries` | `int` | `3` | Maximum retry attempts on transient failures (rate limits, timeouts). Uses exponential backoff with jitter |
+
+#### Modalities
+
+- **`"text"`** — sends only the extracted text. Fastest and cheapest; works well when the document has a reliable text layer.
+- **`"image"`** — sends rendered page images. Useful for visually rich documents where layout matters.
+- **`"multimodal"`** — sends text followed by page images, giving the model both signals.
+
+### Agentic extraction
+
+A [LangChain](https://python.langchain.com/)-powered agent loop that can reason iteratively, call tools, and refine its output over multiple steps. Better suited for complex or ambiguous documents. *Coming soon.*
 
 ---
 

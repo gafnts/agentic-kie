@@ -11,7 +11,6 @@ dependencies = [
     "langchain>=1.2.10",
     "pydantic>=2.12.5",
     "pymupdf>=1.27.2.2",
-    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]
@@ -42,10 +41,11 @@ dev = [
     "mypy>=1.19.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "python-dotenv>=1.2.2",
 ]
 eda = [
     "altair>=6.0.0",
-    "nda",
+    "nda>=0.2.0",
     "pandas>=3.0.1",
     "pandas-stubs>=3.0.0.260204",
     "tiktoken>=0.12.0",
@@ -59,7 +59,7 @@ build-backend = "hatchling.build"
 link-mode = "copy"
 
 [tool.uv.sources]
-nda = { git = "https://github.com/gafnts/kleister-nda-preparation" }
+nda = { git = "https://github.com/gafnts/kleister-nda-preparation.git" }
 
 [tool.hatch.version]
 source = "vcs"

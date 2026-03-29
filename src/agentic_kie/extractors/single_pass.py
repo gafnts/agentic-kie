@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal, TypeVar, cast
 
 from langchain_core.language_models import BaseChatModel
@@ -9,6 +10,8 @@ from pydantic import BaseModel
 
 from agentic_kie.document import PDFDocument
 from agentic_kie.prompts import SINGLE_PASS_SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -44,6 +47,11 @@ class SinglePassExtractor[T: BaseModel]:
     system_prompt:
         Override the default system prompt. If None, uses
         the built-in extraction prompt.
+    max_retries:
+        Maximum number of retry attempts on transient failures
+        (rate limits, timeouts, server errors). Uses exponential
+        backoff with jitter. Set to 0 to disable retries.
+        Defaults to 3.
     """
 
     def __init__(
@@ -53,15 +61,23 @@ class SinglePassExtractor[T: BaseModel]:
         *,
         modality: Literal["text", "image", "multimodal"] = "text",
         system_prompt: str | None = None,
+        max_retries: int = 3,
     ) -> None:
+        if max_retries < 0:
+            raise ValueError("max_retries must be >= 0")
         self._schema = schema
         self._modality = modality
         self._system_prompt = system_prompt or SINGLE_PASS_SYSTEM_PROMPT
-        self._chain: Runnable[Any, Any] = model.with_structured_output(schema)
+        self._chain: Runnable[Any, Any] = model.with_structured_output(
+            schema
+        ).with_retry(stop_after_attempt=max_retries + 1)
 
     def extract(self, document: PDFDocument) -> T:
         """
         Extract structured data from a document in a single LLM call.
+
+        Retries automatically on transient failures using exponential
+        backoff with jitter, up to ``max_retries`` additional attempts.
 
         Parameters
         ----------
@@ -72,12 +88,28 @@ class SinglePassExtractor[T: BaseModel]:
         -------
             A validated instance of the target schema.
         """
+        logger.info(
+            "Extracting %s from %d-page document (modality=%s)",
+            self._schema.__name__,
+            document.page_count,
+            self._modality,
+        )
+
+        content = self._build_content(document)
+
+        if isinstance(content, str):
+            logger.debug("Content payload: %d characters", len(content))
+        else:
+            logger.debug("Content payload: %d blocks", len(content))
+
         messages = [
             SystemMessage(content=self._system_prompt),
-            HumanMessage(content=self._build_content(document)),
+            HumanMessage(content=content),
         ]
 
-        return cast(T, self._chain.invoke(messages))
+        result = cast(T, self._chain.invoke(messages))
+        logger.info("Extraction complete for %s", self._schema.__name__)
+        return result
 
     def _build_content(self, document: PDFDocument) -> str | list[str | dict[str, Any]]:
         """

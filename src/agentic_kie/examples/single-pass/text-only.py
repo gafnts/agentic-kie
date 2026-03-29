@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,6 +11,8 @@ from nda import NDA
 from agentic_kie.extractors.single_pass import SinglePassExtractor
 from agentic_kie.loader import PDFLoader
 
+logging.basicConfig(level=logging.INFO)
+
 load_dotenv()
 
 file_path = (
@@ -18,7 +21,7 @@ file_path = (
     / "data"
     / "train"
     / "documents"
-    / "0a68451dc19053b04342ce829bcd1321.pdf"
+    / "00a1d238e37ac225b8045a97953e845d.pdf"
 )
 
 
