@@ -45,7 +45,7 @@ dev = [
 ]
 eda = [
     "altair>=6.0.0",
-    "nda",
+    "nda>=0.2.0",
     "pandas>=3.0.1",
     "pandas-stubs>=3.0.0.260204",
     "tiktoken>=0.12.0",
@@ -59,7 +59,7 @@ build-backend = "hatchling.build"
 link-mode = "copy"
 
 [tool.uv.sources]
-nda = { git = "https://github.com/gafnts/kleister-nda-preparation", tag = "v0.2.0"  }
+nda = { git = "https://github.com/gafnts/kleister-nda-preparation.git" }
 
 [tool.hatch.version]
 source = "vcs"

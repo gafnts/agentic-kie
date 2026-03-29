@@ -85,7 +85,7 @@ dev = [
 ]
 eda = [
     { name = "altair", specifier = ">=6.0.0" },
-    { name = "nda", git = "https://github.com/gafnts/kleister-nda-preparation?tag=v0.2.0" },
+    { name = "nda", git = "https://github.com/gafnts/kleister-nda-preparation.git" },
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "pandas-stubs", specifier = ">=3.0.0.260204" },
     { name = "tiktoken", specifier = ">=0.12.0" },
@@ -1482,7 +1482,7 @@ wheels = [
 [[package]]
 name = "nda"
 version = "0.2.0"
-source = { git = "https://github.com/gafnts/kleister-nda-preparation?tag=v0.2.0#13cd31ab970f1f28c384b9c616c3ee48b0b9e09e" }
+source = { git = "https://github.com/gafnts/kleister-nda-preparation.git#13cd31ab970f1f28c384b9c616c3ee48b0b9e09e" }
 dependencies = [
     { name = "pandas" },
     { name = "pyarrow" },
