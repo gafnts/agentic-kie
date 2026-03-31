@@ -19,3 +19,7 @@ class EmptyDocumentError(DocumentLoadError):
 
 class OCRNotConfiguredError(DocumentLoadError):
     """Scanned document detected but no OCR provider was supplied."""
+
+
+class ExtractionError(Exception):
+    """Base exception for extraction failures (e.g. agent exceeded max iterations)."""
