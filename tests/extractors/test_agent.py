@@ -115,7 +115,7 @@ class TestBuildGraph:
         extractor._build_graph(pdf_document)
         tools = mock_model.bind_tools.call_args[0][0]
         names = {t.name for t in tools}
-        assert "load_image" in names
+        assert "load_images" in names
 
 
 class TestBuildInitialMessage:
