@@ -1,16 +1,13 @@
-"""Agentic extraction strategy using a LangGraph tool-calling loop."""
+"""Agentic extraction strategy using LangChain's create_agent."""
 
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any, Literal, TypeVar, cast
+from typing import Any, TypeVar, cast
 
+from langchain.agents import create_agent
+from langchain.agents.middleware import ModelRetryMiddleware
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.runnables import Runnable
-from langgraph.graph import MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import BaseModel
 
 from agentic_kie.document import PDFDocument
@@ -27,15 +24,9 @@ class AgenticExtractor[T: BaseModel]:
     """
     Agentic extraction strategy.
 
-    Builds a LangGraph tool-calling loop that lets the model explore
-    a PDF document page-by-page, then produces structured output
-    against the target schema once the agent decides it has gathered
-    enough information.
-
-    The graph is compiled per-document because the tools are closures
-    bound to a specific ``PDFDocument`` instance.  Compilation is a
-    lightweight in-memory operation, negligible compared to LLM
-    latency.
+    Uses ``create_agent`` from LangChain to build a ReAct agent that
+    explores a PDF document via tools, then produces structured output
+    against the target schema.
 
     Parameters
     ----------
@@ -44,18 +35,17 @@ class AgenticExtractor[T: BaseModel]:
         ChatBedrock, ChatGoogleGenerativeAI, etc.).
     schema:
         The Pydantic model class defining extraction targets.
-    modality:
-        ``"text"`` exposes only text tools; ``"multimodal"`` also
-        exposes a ``load_image`` tool for vision-capable models.
-        Defaults to ``"text"``.
+    multimodal:
+        When ``True``, exposes a ``load_images`` tool for
+        vision-capable models. Defaults to ``False``.
     system_prompt:
         Override the default agentic system prompt.
     max_iterations:
-        Maximum number of graph steps (each agent turn consumes
-        two steps: one for the model call, one for tool execution).
-        Defaults to 50 (~25 agent turns).
+        Maximum number of agent steps before raising
+        ``ExtractionError``. Defaults to 50.
     max_retries:
-        Retry count for the final structured-output call.
+        Maximum number of retry attempts on transient model
+        failures (rate limits, timeouts, overloaded errors).
         Defaults to 3.
     """
 
@@ -64,8 +54,8 @@ class AgenticExtractor[T: BaseModel]:
         model: BaseChatModel,
         schema: type[T],
         *,
-        modality: Literal["text", "multimodal"] = "text",
-        system_prompt: str | None = None,
+        multimodal: bool = False,
+        system_prompt: str = AGENTIC_SYSTEM_PROMPT,
         max_iterations: int = 50,
         max_retries: int = 3,
     ) -> None:
@@ -76,19 +66,14 @@ class AgenticExtractor[T: BaseModel]:
 
         self._model = model
         self._schema = schema
-        self._modality = modality
-        self._system_prompt = system_prompt or AGENTIC_SYSTEM_PROMPT
+        self._multimodal = multimodal
+        self._system_prompt = system_prompt
         self._max_iterations = max_iterations
-        self._finalize_chain: Runnable[Any, Any] = model.with_structured_output(
-            schema
-        ).with_retry(stop_after_attempt=max_retries + 1)
+        self._max_retries = max_retries
 
     def extract(self, document: PDFDocument) -> T:
         """
         Extract structured data from a document using an agentic loop.
-
-        The agent iteratively reads pages via tool calls, then a
-        finalize step produces validated structured output.
 
         Parameters
         ----------
@@ -105,18 +90,37 @@ class AgenticExtractor[T: BaseModel]:
             If the agent exceeds ``max_iterations`` without finishing.
         """
         logger.info(
-            "Starting agentic extraction of %s from %d-page document (modality=%s)",
+            "Starting agentic extraction of %s from %d-page document",
             self._schema.__name__,
             document.page_count,
-            self._modality,
         )
 
-        graph = self._build_graph(document)
-        initial_message = self._build_initial_message()
+        tools = create_document_tools(document, include_images=self._multimodal)
+
+        middleware = []
+        if self._max_retries > 0:
+            middleware.append(ModelRetryMiddleware(max_retries=self._max_retries))
+
+        agent = create_agent(
+            model=self._model,
+            tools=tools,
+            system_prompt=self._system_prompt,
+            response_format=self._schema,
+            middleware=middleware,
+        )
 
         try:
-            final_state: dict[str, Any] = graph.invoke(
-                {"messages": [initial_message]},
+            result: dict[str, Any] = agent.invoke(
+                {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": (
+                                "Extract the target entities from this document."
+                            ),
+                        }
+                    ]
+                },
                 config={"recursion_limit": self._max_iterations},
             )
         except Exception as exc:
@@ -127,45 +131,6 @@ class AgenticExtractor[T: BaseModel]:
                 ) from exc
             raise
 
-        messages = [
-            SystemMessage(content=self._system_prompt),
-            *final_state["messages"],
-        ]
-        result = cast(T, self._finalize_chain.invoke(messages))
-
+        structured = cast(T, result["structured_response"])
         logger.info("Agentic extraction complete for %s", self._schema.__name__)
-        return result
-
-    def _build_graph(self, document: PDFDocument) -> Any:
-        """Compile a LangGraph StateGraph scoped to *document*."""
-        tools = create_document_tools(
-            document, include_images=(self._modality == "multimodal")
-        )
-        model_with_tools = self._model.bind_tools(tools)
-        system_prompt = self._system_prompt
-
-        def agent_node(state: MessagesState) -> dict[str, Any]:
-            messages = [SystemMessage(content=system_prompt), *state["messages"]]
-            response = model_with_tools.invoke(messages)
-            return {"messages": [response]}
-
-        graph = StateGraph(MessagesState)
-        graph.add_node("agent", agent_node)
-        graph.add_node("tools", ToolNode(tools))
-        graph.set_entry_point("agent")
-        graph.add_conditional_edges("agent", tools_condition)
-        graph.add_edge("tools", "agent")
-        return graph.compile()
-
-    def _build_initial_message(self) -> HumanMessage:
-        """Create the opening message that describes the extraction target."""
-        fields = {
-            name: info.description or str(info.annotation)
-            for name, info in self._schema.model_fields.items()
-        }
-        return HumanMessage(
-            content=(
-                "Extract the following fields from this document:\n\n"
-                f"{json.dumps(fields, indent=2)}"
-            ),
-        )
+        return structured
