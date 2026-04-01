@@ -19,16 +19,16 @@ from .loader import PDFLoader
 from .ocr import OCRProvider
 
 __all__ = [
+    "PDFLoader",
     "PDFDocument",
-    "AgenticExtractor",
-    "CorruptDocumentError",
-    "DocumentLoadError",
-    "EmptyDocumentError",
-    "ExtractionError",
-    "OCRNotConfiguredError",
-    "PasswordProtectedError",
     "Extractor",
     "SinglePassExtractor",
-    "PDFLoader",
+    "AgenticExtractor",
     "OCRProvider",
+    "DocumentLoadError",
+    "CorruptDocumentError",
+    "EmptyDocumentError",
+    "OCRNotConfiguredError",
+    "PasswordProtectedError",
+    "ExtractionError",
 ]
