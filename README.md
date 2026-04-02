@@ -1,4 +1,4 @@
-# Agentic KIE: LLM-Based Key Information Extraction from Documents
+# Agentic KIE
 
 [![CI](https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml/badge.svg)](https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml)
 [![CD](https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml/badge.svg)](https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml)
@@ -6,137 +6,161 @@
 [![PyPI](https://img.shields.io/pypi/v/agentic-kie)](https://pypi.org/project/agentic-kie/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A Python package for extracting structured information from PDF documents using large language models.
+Structured key information extraction from PDF documents, powered by LLMs.
 
-**agentic-kie** handles the full extraction pipeline: it loads PDFs (including scanned documents via a pluggable OCR backend), and exposes both the raw text and rendered page images so that LLMs can reason over document content using text, vision, or a combination of both. Two extraction strategies are available — a fast single-pass approach and a more capable agentic loop — designed for use in production pipelines and research workflows alike.
+---
+
+## The problem
+
+Extracting structured data from PDFs is deceptively hard. The file format is a rendering instruction set, not a data container. Text layers may be missing, malformed, or absent entirely in scanned documents. Layout carries semantic meaning that raw text extraction destroys. And once you have the content, you still need an orchestration layer that let a LLM reason over it, produce typed output, and handle the inevitable failures.
+
+## The idea
+
+A document enters the system as a file path. It leaves as a validated Pydantic instance. Everything in between — text-layer detection, OCR routing, image rendering, LLM orchestration, output parsing, retry logic — is the library's responsibility.
+
+Two extraction strategies are available:
+
+- **Single-pass** — one structured LLM call. Fast, deterministic, cheap. Suitable when the document is well-structured and the target schema is straightforward.
+- **Agentic** — a ReAct agent loop with document tools. The agent decides which pages to read, in what order, using which modality. Suited for complex or ambiguous documents where iterative reasoning outperforms a single pass.
+
+Both strategies satisfy the same protocol and return the same type. Swap one for the other without changing downstream code.
+
+```python
+from pathlib import Path
+from pydantic import BaseModel
+from langchain_anthropic import ChatAnthropic
+from agentic_kie import PDFLoader, SinglePassExtractor, AgenticExtractor
+
+class Invoice(BaseModel):
+    vendor: str
+    total: float
+    currency: str
+    due_date: str | None
+
+model = ChatAnthropic(model="claude-haiku-4-5")
+doc = PDFLoader().load(Path("invoice.pdf"))
+
+# Fast path: single LLM call
+single = SinglePassExtractor(model=model, schema=Invoice)
+result = single.extract(doc)
+
+# Or let an agent reason over the document
+agent = AgenticExtractor(model=model, schema=Invoice)
+result = agent.extract(doc)
+```
+
+**agentic-kie** packages that entire workflow into a typed, tested library with a clear separation of concerns: document ingestion, content representation, and structured extraction.
+
+---
 
 ## Contents
 
 - [Installation](#installation)
-- [Quick start](#quick-start)
-  - [Loading a PDF](#loading-a-pdf)
-  - [Scanned documents and OCR](#scanned-documents-and-ocr)
-  - [Error handling](#error-handling)
+- [Core abstractions](#core-abstractions)
+  - [PDFLoader](#pdfloader)
+  - [PDFDocument](#pdfdocument)
+  - [OCRProvider](#ocrprovider)
+  - [Extractors](#extractors)
 - [Extraction strategies](#extraction-strategies)
   - [Single-pass extraction](#single-pass-extraction)
   - [Agentic extraction](#agentic-extraction)
+- [Modalities](#modalities)
+- [Error handling](#error-handling)
 - [Contributing](#contributing)
 
 ---
 
 ## Installation
 
-Requires Python 3.13 or later.
-
-```bash
-pip install agentic-kie
-```
-
-Or with [uv](https://docs.astral.sh/uv/):
+Requires Python 3.13 or later. Dependencies are managed with [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv add agentic-kie
 ```
 
+Install with a model provider:
+
+```bash
+uv add "agentic-kie[anthropic]"   # Claude
+uv add "agentic-kie[openai]"      # GPT
+uv add "agentic-kie[google]"      # Gemini
+uv add "agentic-kie[bedrock]"     # AWS Bedrock
+uv add "agentic-kie[all]"         # all providers
+```
+
+Any [LangChain chat model](https://python.langchain.com/docs/integrations/chat/) works. The extras above are provided for convenience.
+
 ---
 
-## Quick start
+## Core abstractions
 
-### Loading a PDF
+The library is organized around four concepts: a loader that absorbs PDF complexity, an immutable document that exposes content, a protocol for pluggable OCR, and extractors that produce structured output.
 
-`PDFLoader` is the main entry point. It handles file I/O, detects whether the document has a native text layer, and returns an immutable `PDFDocument` ready for downstream use.
+### PDFLoader
+
+The ingestion boundary. Takes a file path, detects whether the document has a native text layer (using a characters-per-page heuristic), routes to OCR when needed, and returns a validated `PDFDocument`.
 
 ```python
 from pathlib import Path
 from agentic_kie import PDFLoader
 
 loader = PDFLoader()
-doc = loader.load(Path("invoice.pdf"))
-
-# Access the full document text
-print(doc.full_text)
-
-# Navigate by page (zero-indexed, half-open ranges)
-print(doc.read_text(0, 3))   # pages 0, 1, 2
-print(doc.read_text(4))      # page 4 only
-
-# Render pages to base64-encoded PNG strings (for vision models)
-images = doc.all_images          # all pages
-first_page = doc.load_images(0)  # single page
+doc = loader.load(Path("contract.pdf"))
 ```
 
-`PDFDocument` exposes:
+For scanned documents, pass an OCR provider:
+
+```python
+loader = PDFLoader(
+    ocr_provider=MyOCRBackend(),
+    dpi=300,            # rendering resolution for OCR
+    text_threshold=50,  # min avg chars/page to skip OCR
+)
+doc = loader.load(Path("scanned_form.pdf"))
+```
+
+### PDFDocument
+
+An immutable representation of the loaded document. Exposes text and rendered page images — the two modalities that LLMs can reason over. Images are rendered lazily and cached on first access.
 
 | Attribute / Method | Description |
 |---|---|
 | `page_count` | Total number of pages |
 | `is_ocr` | `True` if text was extracted via OCR |
-| `full_text` | All pages concatenated with double newlines |
-| `read_text(start, end=None)` | Text slice over a page range |
-| `all_images` | All pages as base64 PNGs (cached) |
+| `full_text` | All pages joined with double newlines |
+| `read_text(start, end=None)` | Text slice over a page range (zero-indexed, half-open) |
+| `all_images` | All pages as base64-encoded PNGs (cached) |
 | `load_images(start, end=None)` | Image slice over a page range |
 
-### Scanned documents and OCR
+### OCRProvider
 
-For scanned PDFs, `PDFLoader` automatically detects the absence of a text layer and routes to an OCR provider. Any object implementing `extract_text(image: bytes) -> str` qualifies — no subclassing required.
+A structural protocol. Any object with an `extract_text(image: bytes) -> str` method qualifies — no subclassing or registration required.
 
 ```python
-from agentic_kie import PDFLoader, OCRProvider
+from agentic_kie import OCRProvider
 
 class TextractProvider:
+    """Wraps AWS Textract as an OCR backend."""
+
     def extract_text(self, image: bytes) -> str:
-        # call AWS Textract (or any OCR service)
+        # call Textract, return plain text
         ...
 
+# TextractProvider satisfies OCRProvider by structure alone
 loader = PDFLoader(ocr_provider=TextractProvider())
-doc = loader.load(Path("scanned_form.pdf"))
-
-print(doc.is_ocr)    # True
-print(doc.full_text)
 ```
 
-The `dpi` and `text_threshold` parameters let you control rendering resolution and the sensitivity of the native-text detection heuristic:
+### Extractors
 
-```python
-loader = PDFLoader(
-    ocr_provider=TextractProvider(),
-    dpi=300,            # higher DPI improves OCR accuracy on dense documents
-    text_threshold=50,  # minimum avg characters/page to skip OCR
-)
-```
-
-### Error handling
-
-All document-level failures raise from a common `DocumentLoadError` base, making them easy to catch together or individually:
-
-```python
-from agentic_kie import (
-    DocumentLoadError,
-    CorruptDocumentError,
-    PasswordProtectedError,
-    EmptyDocumentError,
-    OCRNotConfiguredError,
-)
-
-try:
-    doc = loader.load(path)
-except PasswordProtectedError:
-    print("Document is encrypted")
-except OCRNotConfiguredError:
-    print("Scanned document detected — provide an OCR provider")
-except DocumentLoadError as e:
-    print(f"Load failed: {e}")
-```
+Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> T` method that takes a `PDFDocument` and returns a validated instance of a Pydantic schema. This enables type-safe dispatch without coupling strategies through inheritance.
 
 ---
 
 ## Extraction strategies
 
-All extractors satisfy the `Extractor` protocol — a single `extract(document) -> T` method that takes a `PDFDocument` and returns a validated instance of your Pydantic schema. This lets you swap strategies without changing calling code.
-
 ### Single-pass extraction
 
-`SinglePassExtractor` issues one structured LLM call and parses the response directly against a Pydantic schema. Fast, predictable, and suitable for well-structured documents.
+`SinglePassExtractor` sends the full document content to the model in one call, with structured output bound to the target schema. The chain is built once at construction time and reused across documents.
 
 ```python
 from pydantic import BaseModel
@@ -149,37 +173,108 @@ class Invoice(BaseModel):
     currency: str
     due_date: str | None
 
-loader = PDFLoader()
-doc = loader.load(Path("invoice.pdf"))
+doc = PDFLoader().load(Path("invoice.pdf"))
 
 extractor = SinglePassExtractor(
-    model=ChatOpenAI(model="gpt-4o"),
+    model=ChatOpenAI(model="gpt-5.4-mini"),
     schema=Invoice,
+    modality="multimodal",
+    max_retries=3,
 )
 
 result = extractor.extract(doc)
-print(result.vendor, result.total)
 ```
-
-#### Constructor parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `model` | `BaseChatModel` | *required* | Any [LangChain chat model](https://python.langchain.com/docs/integrations/chat/) (ChatOpenAI, ChatAnthropic, ChatBedrock, etc.) |
-| `schema` | `type[T]` | *required* | Pydantic model class defining the fields to extract |
-| `modality` | `"text" \| "image" \| "multimodal"` | `"text"` | Which document representations to send to the model |
+| `model` | `BaseChatModel` | *required* | Any LangChain chat model |
+| `schema` | `type[T]` | *required* | Pydantic model defining the extraction target |
+| `modality` | `"text" \| "image" \| "multimodal"` | `"text"` | Document representation sent to the model |
 | `system_prompt` | `str \| None` | `None` | Custom system prompt (uses a sensible default when omitted) |
-| `max_retries` | `int` | `3` | Maximum retry attempts on transient failures (rate limits, timeouts). Uses exponential backoff with jitter |
-
-#### Modalities
-
-- **`"text"`** — sends only the extracted text. Fastest and cheapest; works well when the document has a reliable text layer.
-- **`"image"`** — sends rendered page images. Useful for visually rich documents where layout matters.
-- **`"multimodal"`** — sends text followed by page images, giving the model both signals.
+| `max_retries` | `int` | `3` | Retry attempts with exponential backoff and jitter |
 
 ### Agentic extraction
 
-A [LangChain](https://python.langchain.com/)-powered agent loop that can reason iteratively, call tools, and refine its output over multiple steps. Better suited for complex or ambiguous documents. *Coming soon.*
+`AgenticExtractor` builds a ReAct agent equipped with document tools — `get_page_count`, `read_text`, and `load_images` — scoped to the document being extracted. The agent decides which pages to inspect, in what order, and stops when it has enough information to produce the target schema.
+
+```python
+from pydantic import BaseModel
+from langchain_google_genai import ChatGoogleGenerativeAI
+from agentic_kie import PDFLoader, AgenticExtractor
+
+class Contract(BaseModel):
+    parties: list[str]
+    effective_date: str
+    governing_law: str | None
+    termination_clause: str | None
+
+doc = PDFLoader().load(Path("contract.pdf"))
+
+extractor = AgenticExtractor(
+    model=ChatGoogleGenerativeAI(model="gemini-3-flash"),
+    schema=Contract,
+    modality="text",
+    max_iterations=50,
+)
+
+result = extractor.extract(doc)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `model` | `BaseChatModel` | *required* | Any LangChain chat model |
+| `schema` | `type[T]` | *required* | Pydantic model defining the extraction target |
+| `modality` | `"text" \| "image" \| "multimodal"` | `"text"` | Controls which document tools the agent can use |
+| `system_prompt` | `str` | *(built-in)* | Custom system prompt for the agent |
+| `max_iterations` | `int` | `50` | Maximum agent steps before raising `ExtractionError` |
+| `max_retries` | `int` | `3` | Retry attempts on transient model failures |
+
+---
+
+## Modalities
+
+Both extractors accept a `modality` parameter that controls how document content is presented to the model:
+
+| Modality | What the model sees | When to use |
+|---|---|---|
+| `"text"` | Extracted text only | Reliable text layer, cost-sensitive, fast |
+| `"image"` | Rendered page images (base64 PNG) | Visually rich documents, layout matters |
+| `"multimodal"` | Text followed by images | Maximum signal, when accuracy justifies cost |
+
+For the agentic extractor, modality controls which *tools* are exposed: `"text"` provides `read_text`, `"image"` provides `load_images`, and `"multimodal"` provides both. `get_page_count` is always available.
+
+---
+
+## Error handling
+
+All document-level failures derive from `DocumentLoadError`, making them easy to catch together or individually. Extraction failures raise `ExtractionError`.
+
+```python
+from agentic_kie import (
+    DocumentLoadError,
+    CorruptDocumentError,
+    PasswordProtectedError,
+    EmptyDocumentError,
+    OCRNotConfiguredError,
+    ExtractionError,
+)
+
+try:
+    doc = loader.load(path)
+    result = extractor.extract(doc)
+except PasswordProtectedError:
+    ...  # encrypted PDF
+except OCRNotConfiguredError:
+    ...  # scanned document, no OCR provider
+except EmptyDocumentError:
+    ...  # zero pages or no extractable text
+except CorruptDocumentError:
+    ...  # unparseable file
+except DocumentLoadError:
+    ...  # catch-all for loading failures
+except ExtractionError:
+    ...  # agent exceeded iteration limit
+```
 
 ---
 
