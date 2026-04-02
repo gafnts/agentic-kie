@@ -74,5 +74,4 @@ class TestEndToEnd:
         result = extractor.extract(doc)
 
         assert isinstance(result, SimpleDocument)
-        # At least one field should be populated
         assert result.title is not None or len(result.parties) > 0
