@@ -1,3 +1,12 @@
+"""
+PDF ingestion boundary.
+
+:class:`PDFLoader` is the single entry point for turning a file path into a
+validated :class:`~agentic_kie.document.PDFDocument`. It absorbs real-world
+PDF complexity — file I/O, text-layer heuristics, OCR routing, encryption
+detection — so that downstream consumers never deal with it.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -26,14 +35,10 @@ class PDFLoader:
     """
     Ingestion boundary between raw PDF files and clean document representations.
 
-    This class absorbs real-world PDF complexity — file I/O, text-layer
-    detection, OCR routing, and error handling — so that PDFDocument can
-    remain a clean, agent-facing representation. Every PDFDocument returned
-    is guaranteed to be validated and usable.
-
-    The separation of concerns is intentional: callers interact with a
-    clean document interface without awareness of how it was loaded or
-    whether OCR was needed.
+    Detects native text layers using a characters-per-page heuristic and
+    routes to a pluggable OCR provider when the threshold is not met. Every
+    :class:`~agentic_kie.document.PDFDocument` returned is guaranteed to be
+    validated and usable.
 
     Parameters
     ----------
