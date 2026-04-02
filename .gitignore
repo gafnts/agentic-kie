@@ -209,5 +209,8 @@ __marimo__/
 # macOS
 .DS_Store
 
+# LangGraph
+.langgraph_api/
+
 # Data
 notebooks/data/

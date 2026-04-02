@@ -42,6 +42,8 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "python-dotenv>=1.2.2",
+    "langgraph-cli[inmem]>=0.4.19",
+    "langgraph-api>=0.7.94",
 ]
 eda = [
     "altair>=6.0.0",
