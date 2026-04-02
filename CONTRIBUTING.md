@@ -27,6 +27,7 @@ uv sync --no-dev
 | `make format` | Run `ruff check --fix` on `src` and `tests` |
 | `make type` | Run `mypy` on `src` and `tests` |
 | `make test` | Run `pytest` with branch coverage |
+| `make langgraph` | Launch LangGraph Studio for interactive graph debugging |
 
 ## CI pipeline
 
