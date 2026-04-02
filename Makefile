@@ -21,7 +21,7 @@ test:
 	uv run pytest --cov --cov-branch --cov-report=xml -v
 
 integration:
-	uv run pytest -v -m "integration"
+	uv run pytest -m "integration" -v
 
 langgraph:
 	uv run langgraph dev
