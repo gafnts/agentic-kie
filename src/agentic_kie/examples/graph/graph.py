@@ -1,47 +1,39 @@
 """
 LangGraph Studio entrypoint.
 
-Exposes a representative compiled agent graph for use with `uv run langgraph dev`.
-Uses placeholder document tools that mirror the real tool signatures so the
-graph structure renders correctly in the UI.
+Exposes a compiled agent graph for use with ``uv run langgraph dev``.
+Loads a real PDF document and wires up Claude Haiku with the document
+tools so the graph is fully functional in the UI.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from langchain.agents import create_agent
-from langchain_core.tools import tool
-from pydantic import BaseModel
+from langchain_anthropic import ChatAnthropic
+from nda import NDA
 
+from agentic_kie.loader import PDFLoader
 from agentic_kie.prompts import AGENTIC_SYSTEM_PROMPT
+from agentic_kie.tools import create_document_tools
 
+file_path = (
+    Path().cwd()
+    / "notebooks"
+    / "data"
+    / "train"
+    / "documents"
+    / "00a1d238e37ac225b8045a97953e845d.pdf"
+)
 
-class _Placeholder(BaseModel):
-    value: str
-
-
-@tool
-def get_page_count() -> int:
-    """Return the total number of pages in the PDF document."""
-    return 0
-
-
-@tool
-def read_text(start: int, end: int | None = None) -> str:
-    """Read text content from the PDF document. Pages are 0-indexed.
-    If end is not provided, reads a single page."""
-    return ""
-
-
-@tool
-def load_images(start: int, end: int | None = None) -> list[str]:
-    """Get base64-encoded PNG renders of pages. Pages are 0-indexed.
-    If end is not provided, renders a single page."""
-    return []
-
+loader = PDFLoader()
+doc = loader.load(file_path)
+tools = create_document_tools(doc, modality="text")
 
 agent = create_agent(
-    model="anthropic:claude-haiku-4-5",
-    tools=[get_page_count, read_text, load_images],
+    model=ChatAnthropic(model="claude-haiku-4-5"),
+    tools=tools,
     system_prompt=AGENTIC_SYSTEM_PROMPT,
-    response_format=_Placeholder,
+    response_format=NDA,
 )
