@@ -1,3 +1,11 @@
+"""
+Default system prompts for the extraction strategies.
+
+Each extractor ships with a sensible default that can be overridden at
+construction time. The prompts are kept here so they can be tested and
+versioned independently of the extraction logic.
+"""
+
 SINGLE_PASS_SYSTEM_PROMPT: str = (
     "You are a document information extraction system. "
     "Extract the requested fields from the provided document. "

@@ -1,4 +1,11 @@
-"""Agentic extraction strategy using LangChain's create_agent."""
+"""
+Agentic extraction strategy.
+
+:class:`AgenticExtractor` builds a ReAct agent that explores a PDF
+document through tools — reading pages, rendering images — and produces
+structured output against the target schema. Suited for complex or
+ambiguous documents where iterative reasoning outperforms a single pass.
+"""
 
 from __future__ import annotations
 

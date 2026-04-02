@@ -1,3 +1,12 @@
+"""
+Single-pass extraction strategy.
+
+:class:`SinglePassExtractor` issues one structured LLM call against the
+full document content and parses the response directly into a Pydantic
+schema. Fast, deterministic, and suitable for well-structured documents
+where all required information is accessible in a single context window.
+"""
+
 from __future__ import annotations
 
 import logging

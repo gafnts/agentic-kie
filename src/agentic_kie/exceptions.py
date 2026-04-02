@@ -1,4 +1,10 @@
-"""Domain-level exceptions for document loading and processing."""
+"""
+Exception hierarchy for document loading and extraction.
+
+All document-level failures derive from :class:`DocumentLoadError`, making
+them easy to catch together or individually. Extraction failures (e.g. an
+agent exceeding its iteration limit) derive from :class:`ExtractionError`.
+"""
 
 
 class DocumentLoadError(Exception):

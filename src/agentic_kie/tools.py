@@ -1,4 +1,11 @@
-"""Document-scoped tools for the agentic extraction loop."""
+"""
+Document-scoped tools for the agentic extraction loop.
+
+:func:`create_document_tools` is a factory that returns LangChain tool
+closures bound to a single :class:`~agentic_kie.document.PDFDocument`.
+The modality parameter controls which tools are exposed, so the agent
+only sees the document representations it is configured to use.
+"""
 
 from __future__ import annotations
 

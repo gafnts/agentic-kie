@@ -1,3 +1,10 @@
+"""
+Immutable document representation exposing text and vision modalities.
+
+:class:`PDFDocument` is the agent-facing surface of the library. It holds
+per-page text and raw PDF bytes, and renders pages to base64 PNG on demand.
+"""
+
 from __future__ import annotations
 
 import base64
@@ -10,17 +17,9 @@ class PDFDocument:
     """
     Immutable document representation exposing text and vision modalities.
 
-    This class is deliberately separated from the ingestion boundary
-    (PDFLoader). The loader absorbs real-world PDF complexity — file I/O,
-    text-layer detection, OCR routing, and error handling — so that this
-    class can remain a clean, agent-facing representation.
-
-    Raw PDF bytes are held in memory rather than re-reading from disk,
-    so the agent can render any page or range of pages as many times as
-    needed without additional I/O.
-
-    Consumers interact with a validated document through a simple interface
-    without awareness of how it was constructed.
+    Holds per-page text and raw PDF bytes in memory so that any page range
+    can be read or rendered as many times as needed without additional I/O.
+    Images are rendered lazily and cached on first access.
 
     Parameters
     ----------

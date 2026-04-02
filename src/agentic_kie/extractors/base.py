@@ -1,3 +1,10 @@
+"""Extractor protocol defining the contract for all extraction strategies.
+
+The protocol enables type-safe dispatch without coupling strategies through
+inheritance. Both :class:`~agentic_kie.extractors.single_pass.SinglePassExtractor`
+and :class:`~agentic_kie.extractors.agent.AgenticExtractor` satisfy it.
+"""
+
 from __future__ import annotations
 
 from typing import Protocol, TypeVar, runtime_checkable
