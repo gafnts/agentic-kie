@@ -1,4 +1,4 @@
-.PHONY: install lint format type check test langgraph
+.PHONY: install lint format type check test integration langgraph
 
 install:
 	uv sync --all-groups --all-extras
@@ -19,6 +19,9 @@ check:
 
 test:
 	uv run pytest --cov --cov-branch --cov-report=xml -v
+
+integration:
+	uv run pytest -v -m "integration"
 
 langgraph:
 	uv run langgraph dev
