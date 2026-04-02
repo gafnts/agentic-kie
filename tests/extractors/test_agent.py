@@ -38,13 +38,15 @@ class TestInit:
         )
         assert extractor._system_prompt == "Custom"
 
-    def test_defaults_to_not_multimodal(self, mock_model: MagicMock) -> None:
+    def test_defaults_to_text_modality(self, mock_model: MagicMock) -> None:
         extractor = AgenticExtractor(model=mock_model, schema=_Schema)
-        assert extractor._multimodal is False
+        assert extractor._modality == "text"
 
-    def test_accepts_multimodal_flag(self, mock_model: MagicMock) -> None:
-        extractor = AgenticExtractor(model=mock_model, schema=_Schema, multimodal=True)
-        assert extractor._multimodal is True
+    def test_accepts_modality(self, mock_model: MagicMock) -> None:
+        extractor = AgenticExtractor(
+            model=mock_model, schema=_Schema, modality="multimodal"
+        )
+        assert extractor._modality == "multimodal"
 
     def test_negative_max_iterations_raises(self, mock_model: MagicMock) -> None:
         with pytest.raises(ValueError):
@@ -141,7 +143,7 @@ class TestExtract:
 
     @patch("agentic_kie.extractors.agent.create_agent")
     @patch("agentic_kie.extractors.agent.create_document_tools")
-    def test_multimodal_passes_include_images(
+    def test_multimodal_passes_modality(
         self,
         mock_create_tools: MagicMock,
         mock_create_agent: MagicMock,
@@ -153,10 +155,12 @@ class TestExtract:
         mock_agent.invoke.return_value = {"structured_response": _EXPECTED}
         mock_create_agent.return_value = mock_agent
 
-        extractor = AgenticExtractor(model=mock_model, schema=_Schema, multimodal=True)
+        extractor = AgenticExtractor(
+            model=mock_model, schema=_Schema, modality="multimodal"
+        )
         extractor.extract(pdf_document)
 
-        mock_create_tools.assert_called_once_with(pdf_document, include_images=True)
+        mock_create_tools.assert_called_once_with(pdf_document, modality="multimodal")
 
     @patch("agentic_kie.extractors.agent.create_agent")
     @patch("agentic_kie.extractors.agent.create_document_tools")
@@ -175,7 +179,7 @@ class TestExtract:
         extractor = AgenticExtractor(model=mock_model, schema=_Schema)
         extractor.extract(pdf_document)
 
-        mock_create_tools.assert_called_once_with(pdf_document, include_images=False)
+        mock_create_tools.assert_called_once_with(pdf_document, modality="text")
 
     @patch("agentic_kie.extractors.agent.create_agent")
     @patch("agentic_kie.extractors.agent.create_document_tools")

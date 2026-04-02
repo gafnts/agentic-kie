@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware
@@ -35,9 +35,11 @@ class AgenticExtractor[T: BaseModel]:
         ChatBedrock, ChatGoogleGenerativeAI, etc.).
     schema:
         The Pydantic model class defining extraction targets.
-    multimodal:
-        When ``True``, exposes a ``load_images`` tool for
-        vision-capable models. Defaults to ``False``.
+    modality:
+        Controls which document tools are exposed to the agent.
+        ``"text"`` provides only ``read_text``, ``"image"`` provides
+        only ``load_images``, and ``"multimodal"`` provides both.
+        Defaults to ``"text"``.
     system_prompt:
         Override the default agentic system prompt.
     max_iterations:
@@ -54,7 +56,7 @@ class AgenticExtractor[T: BaseModel]:
         model: BaseChatModel,
         schema: type[T],
         *,
-        multimodal: bool = False,
+        modality: Literal["text", "image", "multimodal"] = "text",
         system_prompt: str = AGENTIC_SYSTEM_PROMPT,
         max_iterations: int = 50,
         max_retries: int = 3,
@@ -66,7 +68,7 @@ class AgenticExtractor[T: BaseModel]:
 
         self._model = model
         self._schema = schema
-        self._multimodal = multimodal
+        self._modality = modality
         self._system_prompt = system_prompt
         self._max_iterations = max_iterations
         self._max_retries = max_retries
@@ -95,7 +97,7 @@ class AgenticExtractor[T: BaseModel]:
             document.page_count,
         )
 
-        tools = create_document_tools(document, include_images=self._multimodal)
+        tools = create_document_tools(document, modality=self._modality)
 
         middleware = []
         if self._max_retries > 0:

@@ -11,12 +11,20 @@ class TestCreateDocumentTools:
         tools = create_document_tools(pdf_document)
         assert len(tools) == 2
 
-    def test_returns_three_tools_with_images(self, pdf_document: PDFDocument) -> None:
-        tools = create_document_tools(pdf_document, include_images=True)
+    def test_returns_three_tools_with_multimodal(
+        self, pdf_document: PDFDocument
+    ) -> None:
+        tools = create_document_tools(pdf_document, modality="multimodal")
         assert len(tools) == 3
 
-    def test_tool_names(self, pdf_document: PDFDocument) -> None:
-        tools = create_document_tools(pdf_document, include_images=True)
+    def test_returns_two_tools_with_image(self, pdf_document: PDFDocument) -> None:
+        tools = create_document_tools(pdf_document, modality="image")
+        assert len(tools) == 2
+        names = {t.name for t in tools}
+        assert names == {"get_page_count", "load_images"}
+
+    def test_tool_names_multimodal(self, pdf_document: PDFDocument) -> None:
+        tools = create_document_tools(pdf_document, modality="multimodal")
         names = {t.name for t in tools}
         assert names == {"get_page_count", "read_text", "load_images"}
 
@@ -60,7 +68,7 @@ class TestLoadImages:
     def test_returns_base64_strings(
         self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
     ) -> None:
-        tools = create_document_tools(pdf_document, include_images=True)
+        tools = create_document_tools(pdf_document, modality="multimodal")
         tool = next(t for t in tools if t.name == "load_images")
         result = tool.invoke({"start": 0})
         assert isinstance(result, list)
@@ -70,14 +78,14 @@ class TestLoadImages:
     def test_returns_range_of_images(
         self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
     ) -> None:
-        tools = create_document_tools(pdf_document, include_images=True)
+        tools = create_document_tools(pdf_document, modality="multimodal")
         tool = next(t for t in tools if t.name == "load_images")
         result = tool.invoke({"start": 0, "end": 2})
         assert isinstance(result, list)
         assert len(result) == 2
 
     def test_out_of_bounds_returns_error_list(self, pdf_document: PDFDocument) -> None:
-        tools = create_document_tools(pdf_document, include_images=True)
+        tools = create_document_tools(pdf_document, modality="multimodal")
         tool = next(t for t in tools if t.name == "load_images")
         result = tool.invoke({"start": 99})
         assert isinstance(result, list)

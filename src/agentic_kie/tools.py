@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from langchain_core.tools import BaseTool, tool
 
 from agentic_kie.document import PDFDocument
@@ -10,7 +12,7 @@ from agentic_kie.document import PDFDocument
 def create_document_tools(
     document: PDFDocument,
     *,
-    include_images: bool = False,
+    modality: Literal["text", "image", "multimodal"] = "text",
 ) -> list[BaseTool]:
     """
     Factory for tools that wrap a single PDFDocument.
@@ -23,9 +25,11 @@ def create_document_tools(
     ----------
     document:
         The PDF document the tools will operate on.
-    include_images:
-        When True, a ``load_images`` tool is added for vision-capable
-        models.  Defaults to False.
+    modality:
+        Controls which document tools are exposed. ``"text"`` includes
+        only ``read_text``, ``"image"`` includes only ``load_images``,
+        and ``"multimodal"`` includes both. ``get_page_count`` is
+        always included. Defaults to ``"text"``.
     """
 
     @tool
@@ -57,9 +61,11 @@ def create_document_tools(
         except ValueError as exc:
             return [f"Error: {exc}"]
 
-    tools: list[BaseTool] = [get_page_count, read_text]
+    tools: list[BaseTool] = [get_page_count]
 
-    if include_images:
+    if modality in ("text", "multimodal"):
+        tools.append(read_text)
+    if modality in ("image", "multimodal"):
         tools.append(load_images)
 
     return tools
