@@ -15,6 +15,7 @@ from typing import Any, Literal, TypeVar, cast
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware
 from langchain_core.language_models import BaseChatModel
+from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
 from agentic_kie.document import PDFDocument
@@ -80,6 +81,31 @@ class AgenticExtractor[T: BaseModel]:
         self._max_iterations = max_iterations
         self._max_retries = max_retries
 
+    def build_graph(
+        self, document: PDFDocument
+    ) -> CompiledStateGraph[Any, Any, Any, Any]:
+        """
+        Build and return the compiled agent graph without running it.
+
+        Parameters
+        ----------
+        document:
+            A validated PDFDocument to bind the tools to.
+        """
+        tools = create_document_tools(document, modality=self._modality)
+
+        middleware = []
+        if self._max_retries > 0:
+            middleware.append(ModelRetryMiddleware(max_retries=self._max_retries))
+
+        return create_agent(
+            model=self._model,
+            tools=tools,
+            system_prompt=self._system_prompt,
+            response_format=self._schema,
+            middleware=middleware,
+        )
+
     def extract(self, document: PDFDocument) -> T:
         """
         Extract structured data from a document using an agentic loop.
@@ -104,19 +130,7 @@ class AgenticExtractor[T: BaseModel]:
             document.page_count,
         )
 
-        tools = create_document_tools(document, modality=self._modality)
-
-        middleware = []
-        if self._max_retries > 0:
-            middleware.append(ModelRetryMiddleware(max_retries=self._max_retries))
-
-        agent = create_agent(
-            model=self._model,
-            tools=tools,
-            system_prompt=self._system_prompt,
-            response_format=self._schema,
-            middleware=middleware,
-        )
+        agent = self.build_graph(document)
 
         try:
             result: dict[str, Any] = agent.invoke(

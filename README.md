@@ -20,8 +20,8 @@ A document enters the system as a file path. It leaves as a validated Pydantic i
 
 Two extraction strategies are available:
 
-- **Single-pass** — one structured LLM call. Fast, deterministic, cheap. Suitable when the document is well-structured and the target schema is straightforward.
-- **Agentic** — a ReAct agent loop with document tools. The agent decides which pages to read, in what order, using which modality. Suited for complex or ambiguous documents where iterative reasoning outperforms a single pass.
+- **Single-pass**: One structured LLM call. Fast, deterministic, cheap. Suitable when the document is well-structured and the target schema is straightforward.
+- **Agentic**: A ReAct agent loop with document tools. The agent decides which pages to read and in what order. Suited for complex or ambiguous documents where iterative reasoning outperforms a single pass.
 
 Both strategies satisfy the same protocol and return the same type. Swap one for the other without changing downstream code.
 
@@ -85,7 +85,7 @@ uv add "agentic-kie[anthropic]"   # Claude
 uv add "agentic-kie[openai]"      # GPT
 uv add "agentic-kie[google]"      # Gemini
 uv add "agentic-kie[bedrock]"     # AWS Bedrock
-uv add "agentic-kie[all]"         # all providers
+uv add "agentic-kie[all]"         # All of the above
 ```
 
 Any [LangChain chat model](https://python.langchain.com/docs/integrations/chat/) works. The extras above are provided for convenience.
@@ -113,8 +113,8 @@ For scanned documents, pass an OCR provider:
 ```python
 loader = PDFLoader(
     ocr_provider=MyOCRBackend(),
-    dpi=300,            # rendering resolution for OCR
-    text_threshold=50,  # min avg chars/page to skip OCR
+    dpi=300,
+    text_threshold=50,
 )
 doc = loader.load(Path("scanned_form.pdf"))
 ```

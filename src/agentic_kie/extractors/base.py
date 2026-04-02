@@ -1,4 +1,5 @@
-"""Extractor protocol defining the contract for all extraction strategies.
+"""
+Extractor protocol defining the contract for all extraction strategies.
 
 The protocol enables type-safe dispatch without coupling strategies through
 inheritance. Both :class:`~agentic_kie.extractors.single_pass.SinglePassExtractor`
