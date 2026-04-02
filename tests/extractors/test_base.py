@@ -22,6 +22,5 @@ class TestExtractorProtocol:
 
     def test_agentic_satisfies_protocol(self) -> None:
         model = MagicMock()
-        model.with_structured_output.return_value = MagicMock()
         extractor = AgenticExtractor(model=model, schema=_Schema)
         assert isinstance(extractor, Extractor)
