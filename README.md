@@ -66,6 +66,7 @@ result = agent.extract(doc)
   - [Agentic extraction](#agentic-extraction)
 - [Modalities](#modalities)
 - [Error handling](#error-handling)
+- [Examples](#examples)
 - [Contributing](#contributing)
 
 ---
@@ -111,12 +112,8 @@ doc = loader.load(Path("contract.pdf"))
 For scanned documents, pass an OCR provider:
 
 ```python
-loader = PDFLoader(
-    ocr_provider=MyOCRBackend(),
-    dpi=300,
-    text_threshold=50,
-)
-doc = loader.load(Path("scanned_form.pdf"))
+loader = PDFLoader(ocr_provider=MyOCRBackend())
+doc = loader.load(Path("scanned_contract.pdf"))
 ```
 
 ### PDFDocument
@@ -274,6 +271,24 @@ except DocumentLoadError:
     ...  # catch-all for loading failures
 except ExtractionError:
     ...  # agent exceeded iteration limit
+```
+
+---
+
+## Examples
+
+The [`examples/`](examples/) directory contains runnable scripts demonstrating both extraction strategies across different modalities, using the [Kleister NDA](https://github.com/applicaai/kleister-nda) dataset as a benchmark.
+
+Before running any example, prepare the dataset:
+
+```bash
+uv run nda ./examples/data
+```
+
+This processes the Kleister NDA dataset into `examples/data/`, which the scripts expect. Then run a script from the project root:
+
+```bash
+uv run examples/agent/text-only.py
 ```
 
 ---

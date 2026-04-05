@@ -52,22 +52,16 @@ dev = [
   "python-dotenv>=1.2.2",
   "ruff>=0.15.4",
 ]
-eda = [
-  "altair>=6",
+nda = [
   "nda",
-  "pandas>=3.0.1",
-  "pandas-stubs>=3.0.0.260204",
-  "tiktoken>=0.12",
 ]
 
 [tool.hatch]
 build.targets.wheel.packages = [ "src/agentic_kie" ]
-build.targets.wheel.exclude = [ "src/agentic_kie/examples" ]
 version.source = "vcs"
 
 [tool.uv]
-sources.nda = { git = "https://github.com/gafnts/kleister-nda-preparation.git", rev = "v0.3.0" }
-link-mode = "copy"
+sources.nda = { git = "https://github.com/gafnts/kleister-nda-preparation.git" }
 
 [tool.ruff]
 target-version = "py313"
@@ -81,10 +75,6 @@ plugins = [ "pydantic.mypy" ]
 strict = true
 overrides = [
   { module = "tests.*", disallow_untyped_defs = false, disallow_any_expr = false },
-  { module = [
-    "agentic_kie.examples.*",
-    "agentic_kie.examples.*.*",
-  ], ignore_errors = true },
   { module = "nda", ignore_missing_imports = true },
 ]
 

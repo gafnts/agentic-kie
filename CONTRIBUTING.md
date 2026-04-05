@@ -39,7 +39,7 @@ cp .env.example .env
 
 The `make langgraph` target launches [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio) — a visual debugger for the agentic extraction graph. It connects to [LangSmith](https://smith.langchain.com/) and lets you inspect every agent step: model calls, tool invocations, token counts, and latency, all in a single trace view.
 
-![LangGraph Studio](docs/langgraph-studio.png)
+![LangGraph Studio](examples/graph/langgraph-studio.png)
 
 This is especially useful for understanding how the agent navigates a document — which pages it reads, in what order, and how many iterations it needs before producing the final extraction.
 
