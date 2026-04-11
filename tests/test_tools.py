@@ -65,7 +65,7 @@ class TestReadText:
 
 
 class TestLoadImages:
-    def test_returns_base64_strings(
+    def test_returns_image_url_blocks(
         self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
     ) -> None:
         tools = create_document_tools(pdf_document, modality="multimodal")
@@ -73,7 +73,8 @@ class TestLoadImages:
         result = tool.invoke({"start": 0})
         assert isinstance(result, list)
         assert len(result) == 1
-        assert isinstance(result[0], str)
+        assert result[0]["type"] == "image_url"
+        assert result[0]["image_url"]["url"].startswith("data:image/png;base64,")
 
     def test_returns_range_of_images(
         self, pdf_document: PDFDocument, patched_pymupdf: MagicMock
@@ -89,4 +90,5 @@ class TestLoadImages:
         tool = next(t for t in tools if t.name == "load_images")
         result = tool.invoke({"start": 99})
         assert isinstance(result, list)
-        assert "Error" in result[0]
+        assert result[0]["type"] == "text"
+        assert "Error" in result[0]["text"]
