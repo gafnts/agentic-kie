@@ -64,6 +64,8 @@ class PDFDocument:
     @functools.cached_property
     def all_images(self) -> list[str]:
         """All pages rendered as base64-encoded PNG strings, cached on first access."""
+        if self.page_count == 0:
+            return []
         return self.load_images(0, self.page_count)
 
     def read_text(self, start: int, end: int | None = None) -> str:
@@ -80,12 +82,10 @@ class PDFDocument:
         Raises
         ------
         ValueError
-            If the range is negative, inverted, or out of bounds.
+            If the range is negative, empty, inverted, or out of bounds.
         """
         end = end if end is not None else start + 1
         self._validate_range(start, end)
-        if start == end:
-            return ""
         return "\n\n".join(self._pdf_text[start:end])
 
     def load_images(self, start: int, end: int | None = None) -> list[str]:
@@ -102,12 +102,10 @@ class PDFDocument:
         Raises
         ------
         ValueError
-            If the range is negative, inverted, or out of bounds.
+            If the range is negative, empty, inverted, or out of bounds.
         """
         end = end if end is not None else start + 1
         self._validate_range(start, end)
-        if start == end:
-            return []
         with pymupdf.open(stream=self._pdf_bytes, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
             return [self._page_to_png(doc[i], self._dpi) for i in range(start, end)]
 
@@ -118,16 +116,16 @@ class PDFDocument:
         Raises
         ------
         ValueError
-            If either bound is negative, start exceeds end, or the range
-            extends beyond the document's page count.
+            If either bound is negative, start equals or exceeds end, or the
+            range extends beyond the document's page count.
         """
         if start < 0 or end < 0:
             raise ValueError(
                 f"Negative indices are not supported (start={start}, end={end})."
             )
-        if start > end:
-            raise ValueError(f"start ({start}) must not be greater than end ({end}).")
-        if start > self.page_count or end > self.page_count:
+        if start >= end:
+            raise ValueError(f"start ({start}) must be less than end ({end}).")
+        if start >= self.page_count or end > self.page_count:
             raise ValueError(
                 f"Range ({start}, {end}) is out of bounds for a {self.page_count}-page document."
             )

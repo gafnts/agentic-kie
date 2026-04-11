@@ -58,15 +58,22 @@ def create_document_tools(
             return f"Error: {exc}"
 
     @tool
-    def load_images(start: int, end: int | None = None) -> list[str]:
+    def load_images(start: int, end: int | None = None) -> list[dict[str, object]]:
         """
-        Get base64-encoded PNG renders of pages. Pages are 0-indexed.
+        Get rendered page images from the PDF document. Pages are 0-indexed.
         If end is not provided, renders a single page.
         """
         try:
-            return document.load_images(start, end)
+            images = document.load_images(start, end)
+            return [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{b64}"},
+                }
+                for b64 in images
+            ]
         except ValueError as exc:
-            return [f"Error: {exc}"]
+            return [{"type": "text", "text": f"Error: {exc}"}]
 
     tools: list[BaseTool] = [get_page_count]
 
