@@ -82,7 +82,7 @@ class PDFDocument:
         Raises
         ------
         ValueError
-            If the range is negative, inverted, or out of bounds.
+            If the range is negative, empty, inverted, or out of bounds.
         """
         end = end if end is not None else start + 1
         self._validate_range(start, end)
@@ -102,7 +102,7 @@ class PDFDocument:
         Raises
         ------
         ValueError
-            If the range is negative, inverted, or out of bounds.
+            If the range is negative, empty, inverted, or out of bounds.
         """
         end = end if end is not None else start + 1
         self._validate_range(start, end)
@@ -116,8 +116,8 @@ class PDFDocument:
         Raises
         ------
         ValueError
-            If either bound is negative, start exceeds end, or the range
-            extends beyond the document's page count.
+            If either bound is negative, start equals or exceeds end, or the
+            range extends beyond the document's page count.
         """
         if start < 0 or end < 0:
             raise ValueError(
