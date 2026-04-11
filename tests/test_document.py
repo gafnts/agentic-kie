@@ -72,15 +72,22 @@ class TestReadText:
         assert "The parties" in text
         assert "Jurisdiction" not in text
 
-    def test_equal_start_and_end_returns_empty(self, pdf_document: PDFDocument) -> None:
-        assert pdf_document.read_text(1, 1) == ""
+    def test_equal_start_and_end_raises_value_error(
+        self, pdf_document: PDFDocument
+    ) -> None:
+        with pytest.raises(
+            ValueError, match="start \\(1\\) must be less than end \\(1\\)"
+        ):
+            pdf_document.read_text(1, 1)
 
     def test_raises_on_negative_index(self, pdf_document: PDFDocument) -> None:
         with pytest.raises(ValueError, match="Negative indices"):
             pdf_document.read_text(-1)
 
     def test_raises_on_start_greater_than_end(self, pdf_document: PDFDocument) -> None:
-        with pytest.raises(ValueError, match="must not be greater"):
+        with pytest.raises(
+            ValueError, match="start \\(2\\) must be less than end \\(1\\)"
+        ):
             pdf_document.read_text(2, 1)
 
     def test_raises_on_start_beyond_page_count(self, pdf_document: PDFDocument) -> None:
@@ -119,15 +126,22 @@ class TestLoadImages:
         matrix = call_args.kwargs.get("matrix") or call_args[0][0]
         assert abs(matrix.a - 300 / 72) < 0.01
 
-    def test_equal_start_and_end_returns_empty(self, pdf_document: PDFDocument) -> None:
-        assert pdf_document.load_images(1, 1) == []
+    def test_equal_start_and_end_raises_value_error(
+        self, pdf_document: PDFDocument
+    ) -> None:
+        with pytest.raises(
+            ValueError, match="start \\(1\\) must be less than end \\(1\\)"
+        ):
+            pdf_document.load_images(1, 1)
 
     def test_raises_on_negative_index(self, pdf_document: PDFDocument) -> None:
         with pytest.raises(ValueError, match="Negative indices"):
             pdf_document.load_images(-1)
 
     def test_raises_on_start_greater_than_end(self, pdf_document: PDFDocument) -> None:
-        with pytest.raises(ValueError, match="must not be greater"):
+        with pytest.raises(
+            ValueError, match="start \\(2\\) must be less than end \\(1\\)"
+        ):
             pdf_document.load_images(2, 1)
 
     def test_raises_on_start_beyond_page_count(self, pdf_document: PDFDocument) -> None:
