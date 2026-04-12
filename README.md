@@ -1,60 +1,23 @@
-# Agentic KIE
-
-[![CI](https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml/badge.svg)](https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml)
-[![CD](https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml/badge.svg)](https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml)
-[![codecov](https://codecov.io/github/gafnts/agentic-kie/graph/badge.svg)](https://codecov.io/github/gafnts/agentic-kie)
-[![PyPI](https://img.shields.io/pypi/v/agentic-kie)](https://pypi.org/project/agentic-kie/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
-Structured key information extraction from PDF documents, powered by LLMs.
-
----
-
-## The problem
-
-Extracting structured data from PDFs is deceptively hard. The file format is a rendering instruction set, not a data container. Text layers may be missing, malformed, or absent entirely in scanned documents. Layout carries semantic meaning that raw text extraction destroys. And once you have the content, you still need an orchestration layer that let a LLM reason over it, produce typed output, and handle the inevitable failures.
-
-## The idea
-
-A document enters the system as a file path. It leaves as a validated Pydantic instance. Everything in between — text-layer detection, OCR routing, image rendering, LLM orchestration, output parsing, retry logic — is the library's responsibility.
-
-Two extraction strategies are available:
-
-- **Single-pass**: One structured LLM call. Fast, deterministic, cheap. Suitable when the document is well-structured and the target schema is straightforward.
-- **Agentic**: A ReAct agent loop with document tools. The agent decides which pages to read and in what order. Suited for complex or ambiguous documents where iterative reasoning outperforms a single pass.
-
-Both strategies satisfy the same protocol and return the same type. Swap one for the other without changing downstream code.
-
-```python
-from pathlib import Path
-from pydantic import BaseModel
-from langchain_anthropic import ChatAnthropic
-from agentic_kie import PDFLoader, SinglePassExtractor, AgenticExtractor
-
-class Invoice(BaseModel):
-    vendor: str
-    total: float
-    currency: str
-    due_date: str | None
-
-model = ChatAnthropic(model="claude-haiku-4-5")
-doc = PDFLoader().load(Path("invoice.pdf"))
-
-# Fast path: single LLM call
-single = SinglePassExtractor(model=model, schema=Invoice)
-result = single.extract(doc)
-
-# Or let an agent reason over the document
-agent = AgenticExtractor(model=model, schema=Invoice)
-result = agent.extract(doc)
-```
-
-**agentic-kie** packages that entire workflow into a typed, tested library with a clear separation of concerns: document ingestion, content representation, and structured extraction.
+<h1 align="center">Agentic KIE</h1>
+<p align="center">
+  <strong>Structured key information extraction from PDF documents, powered by LLMs.</strong>
+</p>
+<p align="center">
+<a href="https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml"><img src="https://github.com/gafnts/agentic-kie/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml"><img src="https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml/badge.svg" alt="CD"></a>
+<a href="https://codecov.io/github/gafnts/agentic-kie"><img src="https://codecov.io/github/gafnts/agentic-kie/graph/badge.svg" alt="codecov"></a>
+<a href="https://pypi.org/project/agentic-kie/"><img src="https://img.shields.io/pypi/v/agentic-kie" alt="PyPI"></a>
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+</p>
 
 ---
+
+<p align="center">A document enters the system as a file path. It leaves as a validated Pydantic instance. Everything in between (text-layer detection, OCR routing, image rendering, LLM orchestration, output parsing, retry logic) is the library's responsibility.</p>
 
 ## Contents
 
+- [The problem](#the-problem)
+- [The idea](#the-idea)
 - [Installation](#installation)
 - [Core abstractions](#core-abstractions)
   - [PDFLoader](#pdfloader)
@@ -71,9 +34,55 @@ result = agent.extract(doc)
 
 ---
 
+## The problem
+
+Extracting structured data from PDFs is deceptively hard. The file format is a rendering instruction set, not a data container. Text layers may be missing, malformed, or absent entirely in scanned documents. Layout carries semantic meaning that raw text extraction destroys. And once you have the content, you still need an orchestration layer that let a LLM reason over it, produce typed output, and handle the inevitable failures.
+
+---
+
+## The idea
+
+A document enters the system as a file path. It leaves as a validated Pydantic instance. Everything in between (text-layer detection, OCR routing, image rendering, LLM orchestration, output parsing, retry logic) is the library's responsibility.
+
+Two extraction strategies are available:
+
+- **Single-pass**: One structured LLM call over the full document text. Fastest and cheapest option. Matches or outperforms agentic in most configurations (especially with smaller models).
+- **Agentic**: A ReAct agent loop with multimodal document tools. More resilient to document length, but only justifies its cost with standard-tier models on long or complex documents.
+
+Both strategies satisfy the same protocol and return the same type. Swap one for the other without changing downstream code.
+
+```python
+from pathlib import Path
+from pydantic import BaseModel
+from langchain_anthropic import ChatGoogleGenerativeAI
+from agentic_kie import PDFLoader, SinglePassExtractor, AgenticExtractor
+
+class Invoice(BaseModel):
+    vendor: str
+    total: float
+    currency: str
+    due_date: str | None
+
+model = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview")
+document = PDFLoader().load(Path("invoice.pdf"))
+
+# Single LLM call
+single = SinglePassExtractor(model=model, schema=Invoice)
+result = single.extract(document)
+
+# Or let an agent reason over the document
+agent = AgenticExtractor(model=model, schema=Invoice)
+result = agent.extract(document)
+```
+
+**agentic-kie** packages that entire workflow into a typed, tested library with a clear separation of concerns: document ingestion, content representation, and structured extraction.
+
+---
+
 ## Installation
 
-Requires Python 3.13 or later. Dependencies are managed with [uv](https://docs.astral.sh/uv/).
+> [!IMPORTANT]
+> Requires Python 3.13 or later.
 
 ```bash
 uv add agentic-kie
@@ -83,13 +92,14 @@ Install with a model provider:
 
 ```bash
 uv add "agentic-kie[anthropic]"   # Claude
-uv add "agentic-kie[openai]"      # GPT
 uv add "agentic-kie[google]"      # Gemini
+uv add "agentic-kie[openai]"      # GPT
 uv add "agentic-kie[bedrock]"     # AWS Bedrock
 uv add "agentic-kie[all]"         # All of the above
 ```
 
-Any [LangChain chat model](https://python.langchain.com/docs/integrations/chat/) works. The extras above are provided for convenience.
+> [!TIP]
+> Any [LangChain chat model](https://python.langchain.com/docs/integrations/chat/) works. The extras above are provided for convenience.
 
 ---
 
@@ -106,19 +116,19 @@ from pathlib import Path
 from agentic_kie import PDFLoader
 
 loader = PDFLoader()
-doc = loader.load(Path("contract.pdf"))
+document = loader.load(Path("contract.pdf"))
 ```
 
 For scanned documents, pass an OCR provider:
 
 ```python
 loader = PDFLoader(ocr_provider=MyOCRBackend())
-doc = loader.load(Path("scanned_contract.pdf"))
+document = loader.load(Path("scanned_contract.pdf"))
 ```
 
 ### PDFDocument
 
-An immutable representation of the loaded document. Exposes text and rendered page images — the two modalities that LLMs can reason over. Images are rendered lazily and cached on first access.
+An immutable representation of the loaded document. Exposes text and rendered page images (the two modalities that LLMs can reason over). Images are rendered lazily and cached on first access.
 
 | Attribute / Method | Description |
 |---|---|
@@ -131,7 +141,7 @@ An immutable representation of the loaded document. Exposes text and rendered pa
 
 ### OCRProvider
 
-A structural protocol. Any object with an `extract_text(image: bytes) -> str` method qualifies — no subclassing or registration required.
+A structural protocol. Any object with an `extract_text(image: bytes) -> str` method qualifies.
 
 ```python
 from agentic_kie import OCRProvider
@@ -170,7 +180,7 @@ class Invoice(BaseModel):
     currency: str
     due_date: str | None
 
-doc = PDFLoader().load(Path("invoice.pdf"))
+document = PDFLoader().load(Path("invoice.pdf"))
 
 extractor = SinglePassExtractor(
     model=ChatOpenAI(model="gpt-5.4-mini"),
@@ -179,7 +189,7 @@ extractor = SinglePassExtractor(
     max_retries=3,
 )
 
-result = extractor.extract(doc)
+result = extractor.extract(document)
 ```
 
 | Parameter | Type | Default | Description |
@@ -192,11 +202,11 @@ result = extractor.extract(doc)
 
 ### Agentic extraction
 
-`AgenticExtractor` builds a ReAct agent equipped with document tools — `get_page_count`, `read_text`, and `load_images` — scoped to the document being extracted. The agent decides which pages to inspect, in what order, and stops when it has enough information to produce the target schema.
+`AgenticExtractor` builds a ReAct agent equipped with document tools (`get_page_count`, `read_text`, and `load_images`) scoped to the document being extracted. The agent decides which pages to inspect, in what order, and stops when it has enough information to produce the target schema.
 
 ```python
 from pydantic import BaseModel
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatAnthropic
 from agentic_kie import PDFLoader, AgenticExtractor
 
 class Contract(BaseModel):
@@ -205,16 +215,16 @@ class Contract(BaseModel):
     governing_law: str | None
     termination_clause: str | None
 
-doc = PDFLoader().load(Path("contract.pdf"))
+document = PDFLoader().load(Path("contract.pdf"))
 
 extractor = AgenticExtractor(
-    model=ChatGoogleGenerativeAI(model="gemini-3-flash"),
+    model=ChatAnthropic(model="claude-haiku-4-5"),
     schema=Contract,
     modality="text",
     max_iterations=50,
 )
 
-result = extractor.extract(doc)
+result = extractor.extract(document)
 ```
 
 | Parameter | Type | Default | Description |
@@ -238,7 +248,8 @@ Both extractors accept a `modality` parameter that controls how document content
 | `"image"` | Rendered page images (base64 PNG) | Visually rich documents, layout matters |
 | `"multimodal"` | Text followed by images | Maximum signal, when accuracy justifies cost |
 
-For the agentic extractor, modality controls which *tools* are exposed: `"text"` provides `read_text`, `"image"` provides `load_images`, and `"multimodal"` provides both. `get_page_count` is always available.
+> [!NOTE]
+> For the agentic extractor, modality controls which tools are exposed: `"text"` provides `read_text`, `"image"` provides `load_images`, and `"multimodal"` provides both. `get_page_count` is always available.
 
 ---
 
@@ -277,9 +288,9 @@ except ExtractionError:
 
 ## Examples
 
-The [`examples/`](examples/) directory contains runnable scripts demonstrating both extraction strategies across different modalities, using the [Kleister NDA](https://github.com/applicaai/kleister-nda) dataset as a benchmark.
+The [`examples/`](examples/) directory contains runnable scripts demonstrating both extraction strategies across different providers, using the [Kleister NDA](https://github.com/gafnts/kleister-nda-preparation) preparation package.
 
-Before running any example, prepare the dataset:
+Before running any example, fetch the dataset:
 
 ```bash
 uv run nda ./examples/data
