@@ -54,7 +54,7 @@ Both strategies satisfy the same protocol and return the same type. Swap one for
 ```python
 from pathlib import Path
 from pydantic import BaseModel
-from langchain_anthropic import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from agentic_kie import PDFLoader, SinglePassExtractor, AgenticExtractor
 
 class Invoice(BaseModel):
