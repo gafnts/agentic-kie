@@ -206,7 +206,7 @@ result = extractor.extract(document)
 
 ```python
 from pydantic import BaseModel
-from langchain_google_genai import ChatAnthropic
+from langchain_anthropic import ChatAnthropic
 from agentic_kie import PDFLoader, AgenticExtractor
 
 class Contract(BaseModel):
