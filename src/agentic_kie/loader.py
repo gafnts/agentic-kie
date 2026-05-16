@@ -1,9 +1,10 @@
 """
 PDF ingestion boundary.
 
-:class:`PDFLoader` is the single entry point for turning a file path into a
-validated :class:`~agentic_kie.document.PDFDocument`. It absorbs real-world
-PDF complexity — file I/O, text-layer heuristics, OCR routing, encryption
+:class:`PDFLoader` is the single entry point for turning raw PDF input —
+either a file path or an in-memory byte string — into a validated
+:class:`~agentic_kie.document.PDFDocument`. It absorbs real-world PDF
+complexity — file I/O, text-layer heuristics, OCR routing, encryption
 detection — so that downstream consumers never deal with it.
 """
 
@@ -65,7 +66,9 @@ class PDFLoader:
 
     def load(self, path: Path) -> PDFDocument:
         """
-        Load and validate a PDF, returning a clean PDFDocument.
+        Load and validate a PDF from disk, returning a clean PDFDocument.
+
+        Thin wrapper around :meth:`load_bytes` that handles filesystem I/O.
 
         Raises
         ------
@@ -83,23 +86,52 @@ class PDFLoader:
             was configured.
         """
         self._validate_path(path)
-        doc = self._open(path)
+        return self.load_bytes(path.read_bytes(), name=path.name)
+
+    def load_bytes(self, data: bytes, name: str) -> PDFDocument:
+        """
+        Load and validate a PDF from an in-memory byte string.
+
+        Useful when the PDF originates from a stream (S3, HTTP, etc.) and
+        you want to avoid round-tripping through the filesystem.
+
+        Parameters
+        ----------
+        data:
+            Raw PDF bytes.
+        name:
+            Display name used in log lines and error messages
+            (e.g. an S3 key). Not interpreted as a path.
+
+        Raises
+        ------
+        CorruptDocumentError
+            If *data* cannot be parsed as a PDF.
+        PasswordProtectedError
+            If the PDF is encrypted.
+        EmptyDocumentError
+            If the document has zero pages, or yields no text
+            after exhausting all extraction options.
+        OCRNotConfiguredError
+            If the document has no text layer and no OCR provider
+            was configured.
+        """
+        doc = self._open(data, name)
 
         try:
             self._validate_structure(doc)
-            pdf_bytes = path.read_bytes()
 
             text_pages = self._try_read_text_layer(doc)
             if text_pages is not None:
-                logger.info("Text layer detected in '%s'", path.name)
-                return PDFDocument(text_pages, pdf_bytes, dpi=self._dpi)
+                logger.info("Text layer detected in '%s'", name)
+                return PDFDocument(text_pages, data, dpi=self._dpi)
 
-            logger.info("No text layer in '%s', routing to OCR", path.name)
+            logger.info("No text layer in '%s', routing to OCR", name)
 
-            ocr_text = self._run_ocr(doc, path)
+            ocr_text = self._run_ocr(doc, name)
             text_pages = [ocr_text.get(i, "") for i in range(doc.page_count)]
 
-            return PDFDocument(text_pages, pdf_bytes, dpi=self._dpi, ocr=True)
+            return PDFDocument(text_pages, data, dpi=self._dpi, ocr=True)
 
         finally:
             doc.close()  # type: ignore[no-untyped-call]
@@ -111,25 +143,25 @@ class PDFLoader:
             raise FileNotFoundError(f"PDF not found: {path}")
 
     @staticmethod
-    def _open(path: Path) -> pymupdf.Document:
+    def _open(data: bytes, name: str) -> pymupdf.Document:
         """
-        Open a PDF file and return the parsed document.
+        Parse raw PDF bytes and return the opened document.
 
         Raises
         ------
         CorruptDocumentError
-            If the file cannot be parsed as a PDF.
+            If *data* cannot be parsed as a PDF.
         PasswordProtectedError
             If the PDF is encrypted.
         """
         try:
-            doc = pymupdf.open(path)  # type: ignore[no-untyped-call]
+            doc = pymupdf.open(stream=data, filetype="pdf")  # type: ignore[no-untyped-call]
         except pymupdf.FileDataError as e:
-            raise CorruptDocumentError(f"Cannot parse '{path.name}' as PDF: {e}") from e
+            raise CorruptDocumentError(f"Cannot parse '{name}' as PDF: {e}") from e
 
         if doc.is_encrypted:
             doc.close()  # type: ignore[no-untyped-call]
-            raise PasswordProtectedError(f"'{path.name}' is password-protected")
+            raise PasswordProtectedError(f"'{name}' is password-protected")
 
         return doc
 
@@ -161,7 +193,7 @@ class PDFLoader:
         )
         return pages if avg_chars >= self._text_threshold else None
 
-    def _run_ocr(self, doc: pymupdf.Document, path: Path) -> dict[int, str]:
+    def _run_ocr(self, doc: pymupdf.Document, name: str) -> dict[int, str]:
         """
         OCR all pages, returning a page-number → text mapping.
 
@@ -174,7 +206,7 @@ class PDFLoader:
         """
         if self._ocr_provider is None:
             raise OCRNotConfiguredError(
-                f"'{path.name}' appears scanned but no OCR provider "
+                f"'{name}' appears scanned but no OCR provider "
                 "was configured. Pass an OCRProvider to PDFLoader."
             )
 
@@ -190,13 +222,13 @@ class PDFLoader:
                 ocr_text[page_num] = text
 
         if not ocr_text:
-            raise EmptyDocumentError(f"OCR produced no text for '{path.name}'")
+            raise EmptyDocumentError(f"OCR produced no text for '{name}'")
 
         logger.info(
             "OCR extracted text from %d/%d pages of '%s'",
             len(ocr_text),
             doc.page_count,
-            path.name,
+            name,
         )
 
         return ocr_text

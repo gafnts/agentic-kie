@@ -109,7 +109,7 @@ The library is organized around four concepts: a loader that absorbs PDF complex
 
 ### PDFLoader
 
-The ingestion boundary. Takes a file path, detects whether the document has a native text layer (using a characters-per-page heuristic), routes to OCR when needed, and returns a validated `PDFDocument`.
+The ingestion boundary. Takes raw PDF input (a file path or in-memory bytes), detects whether the document has a native text layer (using a characters-per-page heuristic), routes to OCR when needed, and returns a validated `PDFDocument`.
 
 ```python
 from pathlib import Path
@@ -117,6 +117,13 @@ from agentic_kie import PDFLoader
 
 loader = PDFLoader()
 document = loader.load(Path("contract.pdf"))
+```
+
+When the PDF comes from a stream (S3, HTTP, a queue) and you want to skip the filesystem, use `load_bytes`. The `name` argument shows up in log lines and error messages — pass something meaningful like the S3 key:
+
+```python
+data = s3_client.get_object(Bucket=bucket, Key=key)["Body"].read()
+document = loader.load_bytes(data, name=key)
 ```
 
 For scanned documents, pass an OCR provider:
