@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from agentic_kie.document import PDFDocument
 from agentic_kie.exceptions import ExtractionError
 from agentic_kie.extractors.agent import AgenticExtractor
+from agentic_kie.extractors.base import ExtractionResult
 from agentic_kie.prompts import AGENTIC_SYSTEM_PROMPT
 
 
@@ -71,7 +72,7 @@ class TestInit:
 class TestExtract:
     @patch("agentic_kie.extractors.agent.create_agent")
     @patch("agentic_kie.extractors.agent.create_document_tools")
-    def test_returns_schema_instance(
+    def test_returns_extraction_result(
         self,
         mock_create_tools: MagicMock,
         mock_create_agent: MagicMock,
@@ -86,9 +87,31 @@ class TestExtract:
         extractor = AgenticExtractor(model=mock_model, schema=_Schema)
         result = extractor.extract(pdf_document)
 
-        assert isinstance(result, _Schema)
-        assert result.name == "test"
-        assert result.value == 42
+        assert isinstance(result, ExtractionResult)
+        assert isinstance(result.value, _Schema)
+        assert result.value.name == "test"
+        assert result.value.value == 42
+
+    @patch("agentic_kie.extractors.agent.create_agent")
+    @patch("agentic_kie.extractors.agent.create_document_tools")
+    def test_usage_defaults_to_zero_when_no_metadata(
+        self,
+        mock_create_tools: MagicMock,
+        mock_create_agent: MagicMock,
+        mock_model: MagicMock,
+        pdf_document: PDFDocument,
+    ) -> None:
+        mock_create_tools.return_value = []
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"structured_response": _EXPECTED}
+        mock_create_agent.return_value = mock_agent
+
+        extractor = AgenticExtractor(model=mock_model, schema=_Schema)
+        result = extractor.extract(pdf_document)
+
+        assert result.usage["input_tokens"] == 0
+        assert result.usage["output_tokens"] == 0
+        assert result.usage["total_tokens"] == 0
 
     @patch("agentic_kie.extractors.agent.create_agent")
     @patch("agentic_kie.extractors.agent.create_document_tools")

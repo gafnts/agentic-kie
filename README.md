@@ -7,7 +7,7 @@
 <a href="https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml"><img src="https://github.com/gafnts/agentic-kie/actions/workflows/cd.yml/badge.svg" alt="CD"></a>
 <a href="https://codecov.io/github/gafnts/agentic-kie"><img src="https://codecov.io/github/gafnts/agentic-kie/graph/badge.svg" alt="codecov"></a>
 <a href="https://pypi.org/project/agentic-kie/"><img src="https://img.shields.io/pypi/v/agentic-kie" alt="PyPI"></a>
-<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
 </p>
 
 ---
@@ -24,6 +24,7 @@
   - [PDFDocument](#pdfdocument)
   - [OCRProvider](#ocrprovider)
   - [Extractors](#extractors)
+  - [ExtractionResult](#extractionresult)
 - [Extraction strategies](#extraction-strategies)
   - [Single-pass extraction](#single-pass-extraction)
   - [Agentic extraction](#agentic-extraction)
@@ -54,7 +55,8 @@ Both strategies satisfy the same protocol and return the same type. Swap one for
 ```python
 from pathlib import Path
 from pydantic import BaseModel
-from langchain_anthropic import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+
 from agentic_kie import PDFLoader, SinglePassExtractor, AgenticExtractor
 
 class Invoice(BaseModel):
@@ -109,7 +111,7 @@ The library is organized around four concepts: a loader that absorbs PDF complex
 
 ### PDFLoader
 
-The ingestion boundary. Takes a file path, detects whether the document has a native text layer (using a characters-per-page heuristic), routes to OCR when needed, and returns a validated `PDFDocument`.
+The ingestion boundary. Takes raw PDF input (a file path or in-memory bytes), detects whether the document has a native text layer (using a characters-per-page heuristic), routes to OCR when needed, and returns a validated `PDFDocument`.
 
 ```python
 from pathlib import Path
@@ -117,6 +119,13 @@ from agentic_kie import PDFLoader
 
 loader = PDFLoader()
 document = loader.load(Path("contract.pdf"))
+```
+
+When the PDF comes from a stream (S3, HTTP, a queue) and you want to skip the filesystem, use `load_bytes`. The `name` argument shows up in log lines and error messages — pass something meaningful like the S3 key:
+
+```python
+data = s3_client.get_object(Bucket=bucket, Key=key)["Body"].read()
+document = loader.load_bytes(data, name=key)
 ```
 
 For scanned documents, pass an OCR provider:
@@ -159,7 +168,26 @@ loader = PDFLoader(ocr_provider=TextractProvider())
 
 ### Extractors
 
-Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> T` method that takes a `PDFDocument` and returns a validated instance of a Pydantic schema. This enables type-safe dispatch without coupling strategies through inheritance.
+Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> ExtractionResult[T]` method that takes a `PDFDocument` and returns an [`ExtractionResult`](#extractionresult). This enables type-safe dispatch without coupling strategies through inheritance. Swap a `SinglePassExtractor` for an `AgenticExtractor` (or your own) without touching downstream code.
+
+### ExtractionResult
+
+Every `extract` call returns an `ExtractionResult[T]`, a frozen dataclass pairing the validated schema instance with the aggregated token usage for the call. Splitting these out lets callers (Lambdas, batch jobs, eval harnesses) log cost and throughput without re-instrumenting the LLM.
+
+```python
+from agentic_kie import ExtractionResult
+
+result: ExtractionResult[Invoice] = extractor.extract(document)
+result.value     # validated Invoice instance
+result.usage     # aggregated token usage
+```
+
+| Attribute | Description |
+|---|---|
+| `value` | Validated instance of the target Pydantic schema |
+| `usage` | Aggregated `UsageMetadata` across every LLM call made during the extraction |
+
+The `usage` field mirrors LangChain's `UsageMetadata` shape: `input_tokens`, `output_tokens`, `total_tokens`, plus optional `input_token_details` / `output_token_details` for cache and reasoning breakdowns. For the agentic strategy it sums across every step the agent took, so a single number reflects the full extraction cost.
 
 ---
 
@@ -206,7 +234,7 @@ result = extractor.extract(document)
 
 ```python
 from pydantic import BaseModel
-from langchain_google_genai import ChatAnthropic
+from langchain_anthropic import ChatAnthropic
 from agentic_kie import PDFLoader, AgenticExtractor
 
 class Contract(BaseModel):

@@ -11,7 +11,7 @@ git clone https://github.com/gafnts/agentic-kie.git
 cd agentic-kie
 ```
 
-2. Install all dependencies, dev tools, and git hooks.
+2. Install all dependencies, dev tools, and git hooks (both `pre-commit` and `pre-push` stages).
 
 ```bash
 make install
@@ -27,9 +27,10 @@ cp .env.example .env
 
 | Target | Description |
 |---|---|
-| `make check` | Run the full pre-commit suite (lint, format, type check) |
+| `make help` | List every target with its description (default goal — runs when you invoke bare `make`) |
+| `make check` | Run every pre-commit hook against every file (both `pre-commit` and `pre-push` stages) |
 | `make lint` | Run `ruff check` on `src` and `tests` |
-| `make format` | Run `ruff check --fix` on `src` and `tests` |
+| `make format` | Run `ruff check --fix` and `ruff format` on `src` and `tests` |
 | `make type` | Run `mypy` on `src` and `tests` |
 | `make test` | Run `pytest` with branch coverage |
 | `make integration` | Run integration tests only |

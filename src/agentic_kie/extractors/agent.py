@@ -14,12 +14,14 @@ from typing import Any, Literal, TypeVar, cast
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware
+from langchain_core.callbacks import get_usage_metadata_callback
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
 from agentic_kie.document import PDFDocument
 from agentic_kie.exceptions import ExtractionError
+from agentic_kie.extractors.base import ExtractionResult, _fold_usage
 from agentic_kie.prompts import AGENTIC_SYSTEM_PROMPT
 from agentic_kie.tools import create_document_tools
 
@@ -106,7 +108,7 @@ class AgenticExtractor[T: BaseModel]:
             middleware=middleware,
         )
 
-    def extract(self, document: PDFDocument) -> T:
+    def extract(self, document: PDFDocument) -> ExtractionResult[T]:
         """
         Extract structured data from a document using an agentic loop.
 
@@ -117,7 +119,9 @@ class AgenticExtractor[T: BaseModel]:
 
         Returns
         -------
-            A validated instance of the target schema.
+            An :class:`ExtractionResult` carrying the validated schema
+            instance and the aggregated token usage summed across every
+            LLM call the agent made.
 
         Raises
         ------
@@ -133,19 +137,20 @@ class AgenticExtractor[T: BaseModel]:
         agent = self.build_graph(document)
 
         try:
-            result: dict[str, Any] = agent.invoke(
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": (
-                                "Extract the target entities from this document."
-                            ),
-                        }
-                    ]
-                },
-                config={"recursion_limit": self._max_iterations},
-            )
+            with get_usage_metadata_callback() as cb:
+                result: dict[str, Any] = agent.invoke(
+                    {
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Extract the target entities from this document."
+                                ),
+                            }
+                        ]
+                    },
+                    config={"recursion_limit": self._max_iterations},
+                )
         except Exception as exc:
             if "recursion" in type(exc).__name__.lower():
                 raise ExtractionError(
@@ -154,6 +159,6 @@ class AgenticExtractor[T: BaseModel]:
                 ) from exc
             raise
 
-        structured = cast(T, result["structured_response"])
+        value = cast(T, result["structured_response"])
         logger.info("Agentic extraction complete for %s", self._schema.__name__)
-        return structured
+        return ExtractionResult(value=value, usage=_fold_usage(cb.usage_metadata))

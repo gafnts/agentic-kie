@@ -212,7 +212,7 @@ class TestRunOcr:
         self, pdf_path: Path, mock_ocr_provider: MagicMock
     ) -> None:
         doc, _ = _make_doc(page_count=2, chars_per_page=0)
-        result = PDFLoader(ocr_provider=mock_ocr_provider)._run_ocr(doc, pdf_path)
+        result = PDFLoader(ocr_provider=mock_ocr_provider)._run_ocr(doc, pdf_path.name)
         assert result == {0: "OCR extracted text", 1: "OCR extracted text"}
 
     def test_skips_pages_with_no_ocr_text(
@@ -220,7 +220,7 @@ class TestRunOcr:
     ) -> None:
         mock_ocr_provider.extract_text.side_effect = ["text on page 0", ""]
         doc, _ = _make_doc(page_count=2, chars_per_page=0)
-        result = PDFLoader(ocr_provider=mock_ocr_provider)._run_ocr(doc, pdf_path)
+        result = PDFLoader(ocr_provider=mock_ocr_provider)._run_ocr(doc, pdf_path.name)
         assert result == {0: "text on page 0"}
         assert 1 not in result
 
@@ -228,13 +228,13 @@ class TestRunOcr:
         self, pdf_path: Path, mock_ocr_provider: MagicMock
     ) -> None:
         doc, pages = _make_doc(page_count=1, chars_per_page=0)
-        PDFLoader(ocr_provider=mock_ocr_provider, dpi=300)._run_ocr(doc, pdf_path)
+        PDFLoader(ocr_provider=mock_ocr_provider, dpi=300)._run_ocr(doc, pdf_path.name)
         pages[0].get_pixmap.assert_called_once_with(dpi=300)
 
     def test_raises_when_no_provider(self, pdf_path: Path) -> None:
         doc, _ = _make_doc()
         with pytest.raises(OCRNotConfiguredError):
-            PDFLoader()._run_ocr(doc, pdf_path)
+            PDFLoader()._run_ocr(doc, pdf_path.name)
 
     def test_raises_empty_document_when_all_pages_empty(
         self, pdf_path: Path, mock_ocr_provider: MagicMock
@@ -242,4 +242,4 @@ class TestRunOcr:
         mock_ocr_provider.extract_text.return_value = ""
         doc, _ = _make_doc(page_count=2, chars_per_page=0)
         with pytest.raises(EmptyDocumentError):
-            PDFLoader(ocr_provider=mock_ocr_provider)._run_ocr(doc, pdf_path)
+            PDFLoader(ocr_provider=mock_ocr_provider)._run_ocr(doc, pdf_path.name)
