@@ -69,6 +69,8 @@ document = PDFLoader().load(Path("invoice.pdf"))
 # Single LLM call
 single = SinglePassExtractor(model=model, schema=Invoice)
 result = single.extract(document)
+result.value     # validated Invoice instance
+result.usage     # token counts (input/output/total, plus cache/reasoning details)
 
 # Or let an agent reason over the document
 agent = AgenticExtractor(model=model, schema=Invoice)
@@ -166,7 +168,7 @@ loader = PDFLoader(ocr_provider=TextractProvider())
 
 ### Extractors
 
-Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> T` method that takes a `PDFDocument` and returns a validated instance of a Pydantic schema. This enables type-safe dispatch without coupling strategies through inheritance.
+Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> ExtractionResult[T]` method that takes a `PDFDocument` and returns the validated schema instance (`result.value`) alongside aggregated token usage (`result.usage`). The usage payload mirrors LangChain's `UsageMetadata` shape — `input_tokens`, `output_tokens`, `total_tokens`, plus optional `input_token_details` / `output_token_details` for cache and reasoning breakdowns — and for the agentic strategy it sums across every step the agent took.
 
 ---
 

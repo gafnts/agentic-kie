@@ -12,12 +12,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Literal, TypeVar, cast
 
+from langchain_core.callbacks import get_usage_metadata_callback
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel
 
 from agentic_kie.document import PDFDocument
+from agentic_kie.extractors.base import ExtractionResult, _fold_usage
 from agentic_kie.prompts import SINGLE_PASS_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -81,7 +83,7 @@ class SinglePassExtractor[T: BaseModel]:
             schema
         ).with_retry(stop_after_attempt=max_retries + 1)
 
-    def extract(self, document: PDFDocument) -> T:
+    def extract(self, document: PDFDocument) -> ExtractionResult[T]:
         """
         Extract structured data from a document in a single LLM call.
 
@@ -95,7 +97,8 @@ class SinglePassExtractor[T: BaseModel]:
 
         Returns
         -------
-            A validated instance of the target schema.
+            An :class:`ExtractionResult` carrying the validated schema
+            instance and the aggregated token usage for the call.
         """
         logger.info(
             "Extracting %s from %d-page document (modality=%s)",
@@ -116,9 +119,11 @@ class SinglePassExtractor[T: BaseModel]:
             HumanMessage(content=content),
         ]
 
-        result = cast(T, self._chain.invoke(messages))
+        with get_usage_metadata_callback() as cb:
+            value = cast(T, self._chain.invoke(messages))
+
         logger.info("Extraction complete for %s", self._schema.__name__)
-        return result
+        return ExtractionResult(value=value, usage=_fold_usage(cb.usage_metadata))
 
     def _build_content(self, document: PDFDocument) -> str | list[str | dict[str, Any]]:
         """

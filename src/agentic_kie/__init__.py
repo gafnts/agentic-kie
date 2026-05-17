@@ -29,7 +29,7 @@ from .exceptions import (
     PasswordProtectedError,
 )
 from .extractors.agent import AgenticExtractor
-from .extractors.base import Extractor
+from .extractors.base import ExtractionResult, Extractor
 from .extractors.single_pass import SinglePassExtractor
 from .loader import PDFLoader
 from .ocr import OCRProvider
@@ -39,6 +39,7 @@ __all__ = [
     "PDFLoader",
     "PDFDocument",
     "Extractor",
+    "ExtractionResult",
     "SinglePassExtractor",
     "AgenticExtractor",
     "create_document_tools",

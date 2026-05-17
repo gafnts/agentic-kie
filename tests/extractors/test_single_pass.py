@@ -7,6 +7,7 @@ import pytest
 from pydantic import BaseModel
 
 from agentic_kie.document import PDFDocument
+from agentic_kie.extractors.base import ExtractionResult
 from agentic_kie.extractors.single_pass import SinglePassExtractor
 from agentic_kie.prompts import SINGLE_PASS_SYSTEM_PROMPT
 
@@ -77,14 +78,24 @@ class TestInit:
 
 
 class TestExtract:
-    def test_returns_schema_instance(
+    def test_returns_extraction_result(
         self, mock_model: MagicMock, mock_chain: MagicMock, pdf_document: PDFDocument
     ) -> None:
         extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
         result = extractor.extract(pdf_document)
-        assert isinstance(result, _Schema)
-        assert result.name == "test"
-        assert result.value == 42
+        assert isinstance(result, ExtractionResult)
+        assert isinstance(result.value, _Schema)
+        assert result.value.name == "test"
+        assert result.value.value == 42
+
+    def test_usage_defaults_to_zero_when_no_metadata(
+        self, mock_model: MagicMock, mock_chain: MagicMock, pdf_document: PDFDocument
+    ) -> None:
+        extractor = SinglePassExtractor(model=mock_model, schema=_Schema)
+        result = extractor.extract(pdf_document)
+        assert result.usage["input_tokens"] == 0
+        assert result.usage["output_tokens"] == 0
+        assert result.usage["total_tokens"] == 0
 
     def test_invokes_chain_once(
         self, mock_model: MagicMock, mock_chain: MagicMock, pdf_document: PDFDocument

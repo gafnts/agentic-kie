@@ -31,7 +31,8 @@ class TestSinglePass:
             modality="text",
         )
         result = extractor.extract(doc)
-        assert isinstance(result, SimpleDocument)
+        assert isinstance(result.value, SimpleDocument)
+        assert result.usage["total_tokens"] > 0
 
     def test_image_returns_valid_schema(self, sample_pdf_path: Path) -> None:
         doc = PDFLoader().load(sample_pdf_path)
@@ -41,7 +42,8 @@ class TestSinglePass:
             modality="image",
         )
         result = extractor.extract(doc)
-        assert isinstance(result, SimpleDocument)
+        assert isinstance(result.value, SimpleDocument)
+        assert result.usage["total_tokens"] > 0
 
 
 @pytest.mark.integration
@@ -55,7 +57,8 @@ class TestAgentic:
             max_iterations=20,
         )
         result = extractor.extract(doc)
-        assert isinstance(result, SimpleDocument)
+        assert isinstance(result.value, SimpleDocument)
+        assert result.usage["total_tokens"] > 0
 
     def test_image_returns_valid_schema(self, sample_pdf_path: Path) -> None:
         doc = PDFLoader().load(sample_pdf_path)
@@ -66,4 +69,5 @@ class TestAgentic:
             max_iterations=20,
         )
         result = extractor.extract(doc)
-        assert isinstance(result, SimpleDocument)
+        assert isinstance(result.value, SimpleDocument)
+        assert result.usage["total_tokens"] > 0

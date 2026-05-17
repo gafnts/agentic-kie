@@ -45,7 +45,11 @@ def main() -> None:
 
     print(
         json.dumps(
-            {model: result.model_dump() for model, result in results.items()}, indent=4
+            {
+                model: {"value": r.value.model_dump(), "usage": r.usage}
+                for model, r in results.items()
+            },
+            indent=4,
         )
     )
 
