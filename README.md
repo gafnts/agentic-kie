@@ -24,6 +24,7 @@
   - [PDFDocument](#pdfdocument)
   - [OCRProvider](#ocrprovider)
   - [Extractors](#extractors)
+  - [ExtractionResult](#extractionresult)
 - [Extraction strategies](#extraction-strategies)
   - [Single-pass extraction](#single-pass-extraction)
   - [Agentic extraction](#agentic-extraction)
@@ -55,6 +56,7 @@ Both strategies satisfy the same protocol and return the same type. Swap one for
 from pathlib import Path
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
+
 from agentic_kie import PDFLoader, SinglePassExtractor, AgenticExtractor
 
 class Invoice(BaseModel):
@@ -69,8 +71,6 @@ document = PDFLoader().load(Path("invoice.pdf"))
 # Single LLM call
 single = SinglePassExtractor(model=model, schema=Invoice)
 result = single.extract(document)
-result.value     # validated Invoice instance
-result.usage     # token counts (input/output/total, plus cache/reasoning details)
 
 # Or let an agent reason over the document
 agent = AgenticExtractor(model=model, schema=Invoice)
@@ -168,7 +168,26 @@ loader = PDFLoader(ocr_provider=TextractProvider())
 
 ### Extractors
 
-Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> ExtractionResult[T]` method that takes a `PDFDocument` and returns the validated schema instance (`result.value`) alongside aggregated token usage (`result.usage`). The usage payload mirrors LangChain's `UsageMetadata` shape — `input_tokens`, `output_tokens`, `total_tokens`, plus optional `input_token_details` / `output_token_details` for cache and reasoning breakdowns — and for the agentic strategy it sums across every step the agent took.
+Both extraction strategies satisfy the `Extractor` protocol: a single `extract(document) -> ExtractionResult[T]` method that takes a `PDFDocument` and returns an [`ExtractionResult`](#extractionresult). This enables type-safe dispatch without coupling strategies through inheritance. Swap a `SinglePassExtractor` for an `AgenticExtractor` (or your own) without touching downstream code.
+
+### ExtractionResult
+
+Every `extract` call returns an `ExtractionResult[T]`, a frozen dataclass pairing the validated schema instance with the aggregated token usage for the call. Splitting these out lets callers (Lambdas, batch jobs, eval harnesses) log cost and throughput without re-instrumenting the LLM.
+
+```python
+from agentic_kie import ExtractionResult
+
+result: ExtractionResult[Invoice] = extractor.extract(document)
+result.value     # Validated Invoice instance
+result.usage     # Aggregated token usage
+```
+
+| Attribute | Description |
+|---|---|
+| `value` | Validated instance of the target Pydantic schema |
+| `usage` | Aggregated `UsageMetadata` across every LLM call made during the extraction |
+
+The `usage` field mirrors LangChain's `UsageMetadata` shape: `input_tokens`, `output_tokens`, `total_tokens`, plus optional `input_token_details` / `output_token_details` for cache and reasoning breakdowns. For the agentic strategy it sums across every step the agent took, so a single number reflects the full extraction cost.
 
 ---
 
