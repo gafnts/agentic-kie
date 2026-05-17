@@ -178,8 +178,8 @@ Every `extract` call returns an `ExtractionResult[T]`, a frozen dataclass pairin
 from agentic_kie import ExtractionResult
 
 result: ExtractionResult[Invoice] = extractor.extract(document)
-result.value     # Validated Invoice instance
-result.usage     # Aggregated token usage
+result.value     # validated Invoice instance
+result.usage     # aggregated token usage
 ```
 
 | Attribute | Description |
